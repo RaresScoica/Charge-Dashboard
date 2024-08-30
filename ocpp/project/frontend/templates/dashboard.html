@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/@cds/core@6.9.2/global.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@cds/core@6.9.2/styles/theme.dark.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@clr/ui@17.0.0/clr-ui.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Planners</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+</head>
+<body cds-theme="light">
+    <style>
+        @media only screen and (max-width: 768px) {
+            body {
+                font-size: 14px; /* Example: decrease the font size */
+            }
+
+            #menu-content {
+                width: 100%; /* Make the menu full width */
+                margin-left: 0; /* Remove left margin */
+                text-align: center; /* Center align menu items */
+            }
+
+            #menu-content button {
+                width: 80%; /* Make buttons 80% width */
+            }
+
+            #page-1, #page-2, #page-3, #page-4 {
+                margin-left: 10px; /* Adjust margins for pages */
+                margin-right: 10px;
+            }
+
+            .rectangle {
+                width: calc(50% - 20px); /* Make rectangles 50% width with margins */
+                margin: 10px;
+            }
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        label {
+            display: inline-block;
+            text-align: center;
+            margin-right: 10px;
+        }
+
+        input {
+            padding: 10px;
+            margin: 5px;
+            min-width: 80px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .popup {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .inputContainer {
+            margin-bottom: 20px;
+        }
+        
+        #menu-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 200px;
+            height: 100%;
+            background-color: #3498db;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        #menu-content button {
+            border: 0;
+            width: 100%;
+            background-color: white;
+            height: 40px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .middle-strip {
+            height: 1px;
+            background-color: black;
+        }
+
+        .buttonsDiv {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        #page-1 {
+            margin-left: 220px;
+            margin-right: 20px;
+        }
+
+        #page-2 {
+            display: none;
+            margin-left: 250px;
+            margin-right: 50px;
+            margin-top: 2%;
+            width: 300px;
+        }
+
+        #page-3 {
+            display: none;
+            margin-left: 250px;
+            margin-right: 50px;
+            margin-top: 2%;
+        }
+
+        #page-4 {
+            display: none;
+            margin-left: 250px;
+            margin-right: 50px;
+            margin-top: 2%;
+        }
+
+        #page-5 {
+            display: none;
+            margin-left: 250px;
+            margin-right: 50px;
+            margin-top: 2%;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        #rectangle-list {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+        }
+
+        .rectangle {
+            width: 100%;
+            min-width: 200px;
+            height: 200px;
+            margin: 10px;
+            border-radius: 20px;
+            background-color: #3498db;
+            text-align: center;
+            line-height: 40px;
+            color: #ffffff;
+            cursor: pointer;
+        }
+
+        .rectangle:hover {
+            opacity: 0.8;
+        }
+
+        #myTable th {
+            cursor: pointer; /* Add pointer cursor on hover */
+        }
+
+        #map {
+            width: 100%;
+            height: 400px; /* or adjust the height as needed */
+        }
+
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-start; /* Align items to the start of the row */
+            gap: 10px; /* Adds some space between the buttons */
+        }
+
+        .buttons .btn {
+            flex: 1 1 30%; /* Each button will take up 30% of the row */
+            max-width: 30%; /* Ensure buttons don't exceed 30% of the row */
+            box-sizing: border-box; /* Include padding and border in the element's total width */
+            text-align: center;
+            min-width: 280px;
+        }
+    </style>
+
+    <div id="menu-content">
+        <button onclick="showPage('page-1')">Statii</button>
+        <div class="middle-strip"></div>
+        <button onclick="showPage('page-2')">Statie noua</button>
+        <div class="middle-strip"></div>
+        <button onclick="showPage('page-3')">Tranzactii</button>
+        <div class="middle-strip"></div>
+        <button onclick="showPage('page-5')">Harta</button>
+        <div class="middle-strip"></div>
+        <button onclick="showPage('page-4')">Setari</button>
+        <div class="middle-strip"></div>
+        <button onclick="settings()">Conturi</button>
+        <div class="middle-strip"></div>
+        <form action="{{ url_for('logout') }}" method="post">
+            <button type="submit">Iesi din cont</button>
+        </form>
+    </div>
+    
+    <div id="page-1">
+        <div id="rectangle-list"></div>
+    </div>
+
+    <div id="page-2">
+        <label for="newItemName">Numele statiei: </label>
+        <input type="text" id="newItemName">
+        <label for="newItemSN">Serial Number-ul statiei: </label>
+        <input type="text" id="newItemSN">
+        <label for="newKwPrice">Pret KWh: </label>
+        <input type="text" id="newKwPrice">
+        <label for="newSeries">Seria statiei: </label>
+        <input type="text" id="newSeries">
+        <button class="btn btn-primary" onclick="addNewItem()">Adauga o statie</button>
+    </div>
+
+    <div id="page-3">
+        <button id="refreshButton" class="btn btn-primary">Reincarca Tabel</button>
+        <table id="myTable" class="table">
+            <thead>
+              <tr class="left">
+                <th class="left" data-column="name">Statie</th>
+                <th class="left" data-column="kwPrice">Pret KWh(RON/KWh)</th>
+                <th class="left" data-column="loadedQuantity">Cantitate incarcata(KWh)</th>
+                <th class="left" data-column="transactionId">Id Tranzactie</th>
+                <th class="left" data-column="totalPreTax">Total fara TVA(RON)</th>
+                <th class="left" data-column="vatPercentage">TVA(%)</th>
+                <th class="left" data-column="totalWithVat">Total cu TVA(RON)</th>
+                <th class="left" data-column="hour">Data</th>
+                <th class="left">Factura</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+            </tbody>
+        </table>
+    </div>
+
+    <div id="page-5">
+        <div id="map">
+
+        </div>
+        <ul id="pointList">
+            <!-- Points will be added here dynamically -->
+        </ul>
+    </div>
+
+    <div id="page-4">
+        <div class="buttons">
+            <button class="btn btn-primary" onclick="openPopup('priceChanges')">Modifica preturile la toate statiile</button>
+            <button class="btn btn-primary" onclick="openPopup('idTag')">Adauga IDtag interzis</button>
+        </div>
+        <div id="priceChanges" class="overlay">
+            <div class="popup">
+                <div class="inputContainer">
+                    <label for="first_price">Pretul 1(stanga-sus):</label>
+                    <input type="text" id="first_price" name="first_price" required>
+                </div>
+                <div class="inputContainer">
+                    <label for="second_price">Pretul 2(dreapta-sus):</label>
+                    <input type="text" id="second_price" name="second_price" required>
+                </div>
+                <div class="inputContainer">
+                    <label for="third_price">Pretul 3(stanga-jos):</label>
+                    <input type="text" id="third_price" name="third_price" required>
+                </div>
+                <div class="inputContainer">
+                    <label for="fourth_price">Pretul 4(dreapta-jos):</label>
+                    <input type="text" id="fourth_price" name="fourth_price" required>
+                </div>
+                <div class="buttonsDiv">
+                    <button class="btn btn-primary" onclick="closePopup('priceChanges')">Anuleaza</button>
+                    <button class="btn btn-primary" onclick="submitPriceTransfer('priceChanges', 'data_transfer_prepaymentValues')">Ok</button>
+                </div>
+            </div>
+        </div>
+        <div id="idTag" class="overlay">
+            <div class="popup">
+                <div class="inputContainer">
+                    <label for="idTag_input">IDtag:</label>
+                    <input type="text" id="idTag_input" name="idTag_input" required>
+                </div>
+                <div class="buttonsDiv">
+                    <button class="btn btn-primary" onclick="closePopup('idTag')">Anuleaza</button>
+                    <button class="btn btn-primary" onclick="submitIdTag('idTag')">Ok</button>
+                </div>
+            </div>
+        </div>
+        <div id="success" class="overlay">
+            <div class="popup">
+                <div class="inputContainer">
+                    <label>Mesajul a fost transmis cu succes!</label>
+                </div>
+            </div>
+        </div>
+        <div id="error" class="overlay">
+            <div class="popup">
+                <div class="inputContainer">
+                    <label>Eroare, toate spatiile trebuie completate!</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- Add your JavaScript file -->
+    <script>
+        function settings() {
+            window.location.href='/accounts';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+        const map = L.map('map').setView([45.9432, 24.9668], 6); // Initialize map
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map); // Add tile layer
+
+        // Fetch and display existing points
+        // fetch('/points')
+        //     .then(response => response.json())
+        //     .then(points => {
+        //         points.forEach(point => {
+        //             L.marker([point.latitude, point.longitude]).addTo(map); // Add marker to the map
+        //             addPointToList(point); // Add point to the list
+        //         });
+        //     });
+
+            // Function to add a point to the list
+            function addPointToList(point) {
+                const pointList = document.getElementById('pointList');
+                const listItem = document.createElement('li');
+                listItem.textContent = `Latitude: ${point.latitude}, Longitude: ${point.longitude}`;
+                pointList.appendChild(listItem);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add event listener to refresh button
+            document.getElementById('refreshButton').addEventListener('click', fetchTransactionData);
+
+            // Add event listeners to table headers for sorting
+            const headers = document.querySelectorAll('#myTable th');
+            headers.forEach(header => {
+                header.addEventListener('click', () => {
+                    const column = header.dataset.column;
+                    sortColumn(column);
+                });
+            });
+
+            // Fetch transaction data on page load
+            fetchTransactionData();
+        });
+
+        async function fetchTransactionData() {
+            try {
+                const response = await fetch('/get_transactions');
+                const data = await response.json();
+                populateTable(data); // Populate table with fetched data
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        function populateTable(data) {
+            const tbody = document.querySelector('#myTable tbody');
+            tbody.innerHTML = ''; // Clear existing table rows
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+
+                const dateString = row.StopTime;
+                const dateObject = new Date(dateString);
+                const options = {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                };
+                const formattedDate = new Intl.DateTimeFormat('en-GB', options).format(dateObject);
+
+                tr.innerHTML = `
+                    <td class="left">${row.name}</td>
+                    <td class="left">${row.kwPrice}</td>
+                    <td class="left">${(row.finalAmount/100/row.kwPrice).toFixed(2)}</td>
+                    <td class="left">${row.TransactionID}</td>
+                    <td class="left">${(row.finalAmount/100/1.19).toFixed(2)}</td>
+                    <td class="left">19</td>
+                    <td class="left">${(row.finalAmount/100).toFixed(2)}</td>
+                    <td class="left">${formattedDate}</td>
+                    <td><button class="btn btn-secondary" onClick="submitInvoice(${row.TransactionID})">Factura</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function submitReport(transaction_id) {
+            fetch('/submit_report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ transaction_id: transaction_id })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                // Handle success
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                // Handle error
+            });
+        }
+
+        function submitInvoice(transactionId) {
+            window.location.href = `https://charge.arsek.ro/${transactionId}`;
+        }
+
+        let sortOrders = {};
+
+        function sortColumn(column) {
+            const tbody = document.querySelector('#myTable tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            // Determine sorting order for the column
+            if (!sortOrders[column] || sortOrders[column] === 'desc') {
+                sortOrders[column] = 'asc';
+            } else {
+                sortOrders[column] = 'desc';
+            }
+
+            const orderMultiplier = sortOrders[column] === 'asc' ? 1 : -1;
+
+            // Define sorting logic based on column index
+            let columnIndex;
+            switch (column) {
+                case 'name':
+                    columnIndex = 0;
+                    break;
+                case 'kwPrice':
+                    columnIndex = 1;
+                    break;
+                case 'loadedQuantity':
+                    columnIndex = 2;
+                    break;
+                case 'transactionId':
+                    columnIndex = 3;
+                    break;
+                case 'totalPreTax':
+                    columnIndex = 4;
+                    break;
+                case 'vatPercentage':
+                    columnIndex = 5;
+                    break;
+                case 'totalWithVat':
+                    columnIndex = 6;
+                    break;
+                case 'hour':
+                    columnIndex = 7;
+                    // For the 'hour' column, handle sorting based on date objects
+                    rows.sort((rowA, rowB) => {
+                        const dateA = new Date(rowA.querySelectorAll('td')[columnIndex].textContent.trim());
+                        const dateB = new Date(rowB.querySelectorAll('td')[columnIndex].textContent.trim());
+                        return (dateA - dateB) * orderMultiplier;
+                    });
+                    break;
+                default:
+                    return;
+            }
+
+            if (column !== 'hour') {
+                // Sort the rows based on the column data
+                rows.sort((rowA, rowB) => {
+                    const cellA = rowA.querySelectorAll('td')[columnIndex].textContent.trim();
+                    const cellB = rowB.querySelectorAll('td')[columnIndex].textContent.trim();
+
+                    // Handle numeric sorting for applicable columns
+                    if (!isNaN(cellA) && !isNaN(cellB)) {
+                        return (parseFloat(cellA) - parseFloat(cellB)) * orderMultiplier;
+                    }
+
+                    // Handle string sorting
+                    return cellA.localeCompare(cellB) * orderMultiplier;
+                });
+            }
+
+            // Remove existing rows from the table
+            rows.forEach(row => tbody.removeChild(row));
+
+            // Re-append sorted rows to the table
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        function openPopup(popupId) {
+            document.getElementById(popupId).style.display = "flex";
+        }
+
+        function closePopup(popupId) {
+            document.getElementById(popupId).style.display = "none";
+        }
+
+        async function submitPriceTransfer(popupId, messageType) {
+            const first_price = parseInt(document.getElementById("first_price").value);
+            const second_price = parseInt(document.getElementById("second_price").value);
+            const third_price= parseInt(document.getElementById("third_price").value);
+            const fourth_price = parseInt(document.getElementById("fourth_price").value);
+            const response = await fetch('/get_sn_values');
+            
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            // Assuming the response is plain text
+            const textResponse = await response.text();
+
+            // Extract the values after the colon and trim whitespace
+            const values = textResponse.split(':')[1].trim();
+
+            // Split the comma-separated values into an array
+            const serialNumbers = values.split(', ');
+
+            const serialNumbersString = serialNumbers.join(',');
+
+            // Do something with the serialNumbers, for example, log it
+            console.log(serialNumbersString);
+
+            if (first_price && second_price && third_price && fourth_price) {
+                const message = {
+                    type: messageType,
+                    first_price: first_price,
+                    second_price: second_price,
+                    third_price: third_price,
+                    fourth_price: fourth_price,
+                    queue_selector: serialNumbersString
+                };
+                
+                postMessage(message, serialNumbersString, messageType);
+                closePopup(popupId);
+            } else {
+                openPopup('error');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                closePopup('error');
+            }
+        }
+
+        async function submitIdTag(popupId) {
+            const idTag= document.getElementById("idTag_input").value;
+            if (idTag) {
+                try {
+                    // Send POST request to Flask endpoint
+                    const response = await fetch('/add_id_tag', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ idTag: idTag })
+                    });
+
+                    if (response.ok) {
+                        console.log('ID tag added successfully');
+                        // Close the popup if the request was successful
+                        closePopup(popupId);
+                        openPopup('success');
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        closePopup('success');
+                    } else {
+                        console.error('Failed to add ID tag');
+                        openPopup('error');
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        closePopup('error');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    openPopup('error');
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    closePopup('error');
+                }
+            } else {
+                openPopup('error');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                closePopup('error');
+            }
+        }
+
+        async function postMessage(message, serial_number, messageType) {
+            const response = await fetch('/send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...message,
+                    queue_selector: serial_number
+                }),
+            });
+    
+            console.log(`Sent ${messageType} message`);
+            const result = await response.json();
+            console.log(result);
+
+            if (result.success) {
+                openPopup('success');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                closePopup('success');
+            }
+            else {
+                openPopup('error');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                closePopup('error');
+            }
+        }
+
+        function showPage(pageId) {
+            var pages = document.querySelectorAll('[id^="page-"]');
+            pages.forEach(function(page) {
+                page.style.display = 'none';
+            });
+
+            var selectedPage = document.getElementById(pageId);
+            selectedPage.style.display = 'block';
+            
+            // Refresh the page 1
+            if(pageId == 'page-1') {
+                location.reload();
+            }
+            if(pageId == 'page-3') {
+                fetchTransactionData()
+            }
+        }
+
+        async function fetchData() {
+            try {
+                const response = await fetch('/get_data');
+                const data = await response.json();
+
+                renderRectangles(data);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        async function addNewItem() {
+            const newItemName = document.getElementById("newItemName").value;
+            const newItemSN = document.getElementById("newItemSN").value;
+            const newKwPrice = document.getElementById("newKwPrice").value;
+            const newSeries = document.getElementById("newSeries").value;
+
+            if(newItemName && newItemSN && newKwPrice && newSeries) {
+                const response = await fetch('/add_item', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: newItemName,
+                        sn: newItemSN,
+                        kwPrice: newKwPrice,
+                        series: newSeries
+                    }),
+                });
+
+                const result = await response.json();
+                console.log('Item added successfully:', result);
+
+                location.reload();
+            } else {
+                openPopup('error');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                closePopup('error');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchData);
+
+        function renderRectangles(data) {
+            const rectangleList = document.getElementById('rectangle-list');
+
+            data.forEach((item, index) => {
+                const { name, sn } = item;
+
+                if (name === 'CP1' || name === 'CP2') {
+                    return;
+                }
+
+                const rectangle = document.createElement('div');
+                rectangle.classList.add('rectangle');
+                rectangle.style.fontSize = '18px';
+                rectangle.innerText = sn;
+                
+                const labelElement = document.createElement('div');
+                labelElement.classList.add('rectangle-label');
+                labelElement.style.fontSize = '18px';
+                labelElement.innerText = name;
+                
+                rectangle.addEventListener('click', () => {
+                    console.log(`Clicked on item ${index + 1}: ${name} - ${sn}`);
+                    str = name;
+                    redirectToPage(str);
+                });
+
+                rectangle.appendChild(labelElement);
+                rectangleList.appendChild(rectangle);
+            });
+        }
+
+        function redirectToPage(str) {
+            const pageUrl = `/chargepoint/${str}`;
+            window.location.href = pageUrl;
+        }
+
+        function disconnect() {
+            window.location.href = "/home";
+        }
+    </script>
+</body>
+</html>

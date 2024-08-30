@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@cds/core": "^6.9.2",
+    "@clr/ui": "^17.0.0",
+    "amqp-ts": "^1.8.0",
+    "amqplib": "^0.10.3"
+  }
+}

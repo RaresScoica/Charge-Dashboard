@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/@cds/core@6.9.2/global.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@cds/core@6.9.2/styles/theme.dark.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@clr/ui@17.0.0/clr-ui.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Accounts</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+</head>
+<body cds-theme="light">
+    <style>
+        button:hover {
+            opacity: 0.8;
+        }
+
+        label {
+            display: inline-block;
+            text-align: center;
+            margin-right: 10px;
+        }
+
+        input {
+            padding: 10px;
+            margin: 5px;
+            min-width: 80px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .popup {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .inputContainer {
+            margin-bottom: 20px;
+        }
+
+        .buttonsDiv {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+
+    <h1>Manage Accounts</h1>
+
+    <button class="btn btn-primary" onclick="openPopup('changePassword')">Add new account</button>
+
+    <hr>
+
+    <!-- Accounts Table -->
+    <table border="1" class="table">
+        <thead>
+            <tr class="left">
+                <th class="left">Username</th>
+                <th class="left">Role</th>
+                <th class="left">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.username }}</td>
+                <td>{{ user.role }}</td>
+                <td>
+                    {% if user.username == user.id %}
+                    <!-- Edit Account Form (Hide if it's the current user) -->
+                    <form action="{{ url_for('accounts') }}" method="POST" style="display:inline-block;">
+                        <input type="hidden" name="action" value="edit">
+                        <input type="hidden" name="user_id" value="{{ user._id }}">
+                        <select name="role" required>
+                            <option value="administrator" {% if user.role == 'administrator' %}selected{% endif %}>Administrator</option>
+                            <option value="operator" {% if user.role == 'operator' %}selected{% endif %}>Operator</option>
+                            <option value="guest" {% if user.role == 'guest' %}selected{% endif %}>Guest</option>
+                        </select>
+                        <button type="submit">Edit</button>
+                    </form>
+
+                    <!-- Delete Account Form (Hide if it's the current user) -->
+                    <form action="{{ url_for('accounts') }}" method="POST" style="display:inline-block;">
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="user_id" value="{{ user._id }}">
+                        <button type="submit">Delete</button>
+                    </form>
+                    {% endif %}
+
+                    <!-- Change Password Form -->
+                    <form action="{{ url_for('accounts') }}" method="POST" style="display:inline-block;">
+                        <input type="hidden" name="action" value="change_password">
+                        <input type="hidden" name="user_id" value="{{ user._id }}">
+                        <input type="password" name="new_password" placeholder="New Password" required>
+                        <button type="submit">Change Password</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <form action="{{ url_for('accounts') }}" method="POST" id="changePassword" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <input type="hidden" name="action" value="add">
+                <label>Username:</label>
+                <input type="text" name="username" required>
+            </div>
+            <div class="inputContainer">
+                <label>Password:</label>
+                <input type="password" name="password" required>
+            </div>
+            <div class="inputContainer">
+                <label>Role:</label>
+                <select name="role" required>
+                    <option value="administrator">Administrator</option>
+                    <option value="operator">Operator</option>
+                    <option value="guest">Guest</option>
+                </select>
+            </div>
+            <div class="buttonsDiv">
+                <button class="btn btn-primary" onclick="closePopup('changePassword')">Anuleaza</button>
+                <button class="btn btn-primary" type="submit">Ok</button>
+            </div>
+        </div>
+    </div>
+    <div id="success" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <label>Mesajul a fost transmis cu succes!</label>
+            </div>
+        </div>
+    </div>
+    <div id="error" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <label>Eroare, toate spatiile trebuie completate!</label>
+            </div>
+        </div>
+    </div>
+
+    <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+
+    <script>
+        function openPopup(popupId) {
+            document.getElementById(popupId).style.display = "flex";
+        }
+
+        function closePopup(popupId) {
+            document.getElementById(popupId).style.display = "none";
+        }
+    </script>
+</body>
+</html>

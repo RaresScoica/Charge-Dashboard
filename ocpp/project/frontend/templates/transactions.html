@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction</title>
+    <style>
+        body {
+            font-size: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .transaction-label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        h1 {
+            text-align: center;
+            margin: 20px;
+        }
+        .labels {
+            margin-top: 50px;
+        }
+        img {
+            width: 22%;
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: auto; /* Maintain aspect ratio */
+        }
+    </style>
+</head>
+<body>
+    <h1>Raport Tranzactie</h1>
+    <img src="data:image/jpeg;base64,{{ image_data }}">
+    <div class="labels">
+        <label class="transaction-label">Tranzactia: {{ transactionDetails.TransactionID }}</label>
+        <label class="transaction-label">Statia: {{ name }}</label>
+        <label class="transaction-label">Data: {{ current_date }}</label>
+        <label class="transaction-label">Durata: {{ transactionDetails.Duration }} minute</label>
+        <label class="transaction-label">Cantitate: {{ "%.2f"|format(transactionDetails.Amount/100/transactionDetails.kwPrice) }} KWh</label>
+        <label class="transaction-label">Pret KWh: {{ transactionDetails.kwPrice }} RON/KWh</label>
+        <label class="transaction-label">Pret fara TVA: {{ "%.2f"|format(transactionDetails.Amount/100/1.19) }} RON</label>
+        <label class="transaction-label">Pret cu TVA: {{ transactionDetails.Amount/100 }} RON</label>
+    </div>
+    </body>
+</html>

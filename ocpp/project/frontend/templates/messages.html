@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/@cds/core@6.9.2/global.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@cds/core@6.9.2/styles/theme.dark.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@clr/ui@17.0.0/clr-ui.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCPP Frontend</title>
+</head>
+
+<body cds-theme="light">
+    <style>
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        label {
+            width: 130px;
+            display: inline-block;
+            text-align: right;
+            margin-right: 10px;
+        }
+
+        input {
+            width: 200px;
+            box-sizing: border-box;
+        }
+
+        button {
+            margin-top: 5px;
+        }
+
+        .dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background-color: #3498db;
+            margin: 10px;
+            display: inline-block;
+            animation: pulse 1s infinite;
+        }
+    </style>
+
+    <form id="messageForm">
+        <h1>Charge Point Status</h1>
+        <div id="dots-container"></div>
+        <div>
+            <label for="messageType">Message Type:</label>
+            <input type="text" id="messageType" name="messageType" required>
+        </div>
+        <div>
+            <label for="idTag">ID Tag:</label>
+            <input type="text" id="idTag" name="idTag" required>
+        </div>
+        <div>
+            <label for="connector_id">Connector ID:</label>
+            <input type="text" id="connector_id" name="connector_id" required>
+        </div>
+        <div>
+            <label for="transaction_id">Tranzactia:</label>
+            <input type="text" id="transaction_id" name="transaction_id" required>
+        </div>
+        <div>
+            <label for="availability_type">Availability Type:</label>
+            <input type="text" id="availability_type" name="availability_type" required>
+        </div>
+        <div>
+            <label for="reset_type">Reset Type:</label>
+            <input type="text" id="reset_type" name="reset_type" required>
+        </div>
+        <div>
+            <label for="fee_service">Taxa incarcare:</label>
+            <input type="text" id="fee_service" name="fee_service" required>
+        </div>
+        <div>
+            <label for="prepayment_amount">Taxa preautorizare:</label>
+            <input type="text" id="prepayment_amount" name="prepayment_amount" required>
+        </div>
+        <div>
+            <label for="kw_price">Pret kw:</label>
+            <input type="text" id="kw_price" name="kw_price" required>
+        </div>
+        <div>
+            <label>Charge Points:</label>
+            <select id="queueSelector">
+                <option value="CP_1">CP 1</option>
+                <option value="CP_2">CP 2</option>
+                <option value="C6E12BCC23ZRKUWYRD">Venetic</option>
+                <option value="C6E20CCC23CATETRVT">Modarem</option>
+                <option value="CP_1,CP_2">All CPs</option>
+            </select>
+        </div>
+        <div>
+            <button type="button" onclick="sendMessage('')">Trimite mesaj</button>
+            <button type="button" id="change_availability" onclick="sendMessage('change_availability')">Modifica statusul de functionare al statiei</button>
+            <button type="button" onclick="sendMessage('reset')">Reseteaza statia</button>
+            <button type="button" onclick="sendMessage('remote_start_transaction')">Incepe incarcarea</button>
+            <button type="button" onclick="sendMessage('remote_stop_transaction')">Opreste incarcarea</button>
+            <button type="button" onclick="sendMessage('data_transfer')">Schimba informatiile de tarifare</button>
+        </div>
+    </form>
+
+    <script>
+        async function sendMessage(messageType) {
+            if (messageType == '') {
+                messageType = document.getElementById("messageType").value;
+            }
+            const idTag = document.getElementById("idTag").value;
+            const connector_id = parseInt(document.getElementById("connector_id").value);
+            const transaction_id = parseInt(document.getElementById("transaction_id").value);
+            const availability_type = document.getElementById("availability_type").value;
+            const reset_type = document.getElementById("reset_type").value;
+            const fee_service = parseFloat(document.getElementById("fee_service").value);
+            const prepayment_amount = parseFloat(document.getElementById("prepayment_amount").value);
+            const kw_price = parseFloat(document.getElementById("kw_price").value);
+
+            const queueSelector = document.getElementById("queueSelector").value;
+
+            const message = {
+                type: messageType,
+                id_tag: idTag,
+                connector_id: connector_id,
+                transaction_id: transaction_id,
+                availability_type: availability_type,
+                reset_type: reset_type,
+                fee_service: fee_service,
+                prepayment_amount: prepayment_amount,
+                kw_price: kw_price,
+                queue_selector: queueSelector
+            };
+
+            const response = await fetch('/send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...message,
+                    queue_selector: queueSelector
+                }),
+            });
+
+            console.log(`Sent ${messageType} message`);
+            const result = await response.json();
+            console.log(result);
+        }
+    </script>
+</body>
+
+</html>

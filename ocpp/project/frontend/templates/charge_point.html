@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/@cds/core@6.9.2/global.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@cds/core@6.9.2/styles/theme.dark.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@clr/ui@17.0.0/clr-ui.min.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Planners</title>
+    <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"> -->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+</head>
+<body cds-theme="light">
+    <style>
+        body {
+            padding: 30px 60px;
+        }
+
+        select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            width: 100%;
+            font-size: 14px;
+            margin-top: 10px;
+            min-width: 80px;
+        }
+
+        label {
+            display: inline-block;
+            text-align: center;
+            margin-right: 10px;
+        }
+
+        input {
+            padding: 10px;
+            margin: 5px;
+            min-width: 80px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .popup {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .inputContainer {
+            margin-bottom: 20px;
+        }
+
+        .buttonsDiv {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .tariff {
+            padding: 20px 0px;
+            font-size: 15px;
+            display: flex;
+            align-items: center; /* Align items vertically */
+        }
+
+        .tariff label {
+            display: block;
+            margin-top: 5px; /* Optional: Add some spacing between lines */
+        }
+
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-start; /* Align items to the start of the row */
+            gap: 10px; /* Adds some space between the buttons */
+        }
+
+        .buttons .btn {
+            flex: 1 1 30%; /* Each button will take up 30% of the row */
+            max-width: 30%; /* Ensure buttons don't exceed 30% of the row */
+            box-sizing: border-box; /* Include padding and border in the element's total width */
+            text-align: center;
+            min-width: 280px;
+        }
+
+        .status-container {
+            display: flex;
+            align-items: center; /* Align items vertically */
+        }
+
+        #tableDiv {
+            margin-top: 10px;
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between; /* This will place the h1 and button on opposite sides */
+            align-items: center; /* Aligns items vertically in the center */
+            margin-bottom: 10px; /* Adds space between the header and the table */
+        }
+
+        .header-row h1 {
+            margin: 20 0px; /* Removes default margin from h1 */
+        }
+
+        .header-row button {
+            margin-left: auto; /* Ensures the button is pushed to the far right */
+        }
+
+        #myTable th {
+            cursor: pointer; /* Add pointer cursor on hover */
+        }
+
+        .dot {
+            width: 15px;
+            height: 15px;
+            margin: 5px;
+            border-radius: 50%;
+            background-color: green;
+        }
+
+        .connected {
+            animation: pulsate 1s infinite alternate;
+        }
+
+        @keyframes pulsate {
+            from {
+                transform: scale(1);
+            }
+            to {
+                transform: scale(1.3);
+            }
+        }
+
+        .disconnected {
+            background-color: gray;
+            opacity: 50%;
+        }
+    </style>
+
+    <script>
+        var currentUrl = window.location.href;
+        var urlParts = currentUrl.split('/');
+        var str = urlParts[urlParts.length - 1];
+        document.title = str;
+        document.write(`<h1 id="header">${str}</h1>`);
+        var snValue = "";
+        var seriesValue = "";
+
+        function getDataForName(name, callback) {
+            $.ajax({
+                url: '/get_data',
+                method: 'GET',
+                success: function(data) {
+                    // Find the entry with the matching name
+                    var entry = data.find(function(item) {
+                        return item.name === name;
+                    });
+
+                    if (entry) {
+                        // Access the 'sn' value for the matched name
+                        snValue = entry.sn;
+                        seriesValue = entry.series;
+                        console.log('Serial Number for ' + name + ': ' + snValue);
+
+                        document.getElementById('snLabel').textContent = `Serial number: ${snValue}`;
+                        document.getElementById('seriesLabel').textContent = `Seria statiei: ${seriesValue}`;
+                    } else {
+                        console.log('Name not found');
+                    }
+
+                    callback(snValue);
+                },
+                error: function(err) {
+                    console.error('Error retrieving data: ', err);
+
+                    callback(null);
+                }
+            });
+        }
+
+        getDataForName(str, function(result) {
+            // Now you can use 'result' (which is 'snValue') in your code
+            if (result !== null) {
+                console.log('Stored Serial Number:', result);
+
+                getDataForSN(result, function(res) {
+                    if (res !== null) {
+                        console.log('Stored Status:', res);
+
+                        // Update the dot based on the status
+                        var dotElement = document.getElementById('dot');
+                        var connectedLabel = document.getElementById('connected');
+
+                        if (res === "connected") {
+                            dotElement.className = 'dot connected';
+                            connectedLabel.innerText = "Online";
+                        } else if (res === "disconnected") {
+                            dotElement.className = 'dot disconnected';
+                            connectedLabel.innerText = "Offline";
+                        }
+                    } else {
+                        console.log('Error occurred or name not found.');
+                    }
+                });
+            } else {
+                console.log('Error occurred or name not found.');
+            }
+        });
+
+        var online = "";
+
+        function getDataForSN(sn, callback) {
+            $.ajax({
+                url: '/get_status',
+                method: 'GET',
+                success: function(data) {
+                    // Find the entry with the matching name
+                    var entry = data.find(function(item) {
+                        return item.sn === sn;
+                    });
+
+                    if (entry) {
+                        // Access the 'sn' value for the matched name
+                        online = entry.status;
+                        console.log('Status for ' + name + ': ' + online);
+                    } else {
+                        console.log('Name not found');
+                    }
+
+                    callback(online);
+                },
+                error: function(err) {
+                    console.error('Error retrieving data: ', err);
+
+                    callback(null);
+                }
+            });
+        }
+    </script>
+
+    <div class="tariff">
+        <div class="status-container">
+            <div id="dot" class="dot"></div>
+            <label id="connected">Offline</label>
+        </div>
+        <label>Pret KWh: </label>
+        <label id="initial_kw_price">0 RON</label>
+        <label id="snLabel"></label>
+        <label id="seriesLabel"></label>
+    </div>
+
+    <div class="buttons">
+        <!-- <button class="btn btn-primary" onclick="openPopup('statusFunctionare')">Modifica statusul de functionare al statiei</button> -->
+        <button class="btn btn-primary" onclick="openPopup('resetare')">Reseteaza statia</button>
+        <button class="btn btn-primary" onclick="openPopup('incepeIncarcarea')">Incepe incarcarea</button>
+        <button class="btn btn-primary" onclick="openPopup('opresteIncarcarea')">Opreste incarcare</button>
+        <button class="btn btn-primary" onclick="openPopup('schimbaInfo')">Schimba informatiile de tarifare</button>
+        <button class="btn btn-primary" onclick="openPopup('priceChanges')">Modifica preturile de pe display</button>
+        <button class="btn btn-primary" onclick="openPopup('changeHour')">Modifica ora statiei</button>
+        <button class="btn btn-primary" onclick="openPopup('getDiagnostics')">Diagnosticheaza statia</button>
+        <button class="btn btn-primary" onclick="openPopup('updateFirmware')">Updateaza softwareul statiei</button>
+        <button class="btn btn-primary" onclick="openPopup('changeName')">Schimba numele statiei</button>
+        <button class="btn btn-primary" onclick="openPopup('changeSeries')">Schimba seria statiei</button>
+    </div>
+
+    <div id="statusFunctionare" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <label for="availability_type">Statusul statiei:</label>
+                <select id="availability_type">
+                    <option value="Operative">Operativa</option>
+                    <option value="Inoperative">Inoperativa</option>
+                </select>
+            </div>
+            <div class="inputContainer">
+                <label for="connector_id_status">ID-ul conectorului:</label>
+                <select id="connector_id_status">
+                    <option value=1>1</option>
+                    <option value=2>2</option>
+                </select>
+            </div>
+            <div class="buttonsDiv">
+                <button class="btn btn-primary" onclick="cancelForm('statusFunctionare')">Anuleaza</button>
+                <button class="btn btn-primary" onclick="submitChangeAvailability('statusFunctionare', 'change_availability')">Ok</button>
+            </div>
+        </div>
+    </div>
+    <div id="resetare" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <label for="reset_type">Tipul resetarii:</label>
+                <select id="reset_type">
+                    <option value="Soft">Soft</option>
+                    <option value="Hard">Hard</option>
+                </select>
+            </div>
+            <div class="buttonsDiv">
+                <button class="btn btn-primary" onclick="cancelForm('resetare')">Anuleaza</button>
+                <button class="btn btn-primary" onclick="submitReset('resetare', 'reset')">Ok</button>
+            </div>
+        </div>
+    </div>
+    <div id="incepeIncarcarea" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <label for="connector_id_start">ID-ul conectorului:</label>
+                <select id="connector_id_start">
+                    <option value=1>1</option>
+                    <option value=2>2</option>
+                </select>
+            </div>
+            <div class="buttonsDiv">
+                <button class="btn btn-primary" onclick="cancelForm('incepeIncarcarea')">Anuleaza</button>
+                <button class="btn btn-primary" onclick="submitStart('incepeIncarcarea', 'remote_start_transaction')">Ok</button>
+            </div>
+        </div>
+    </div>
+    <div id="opresteIncarcarea" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <label>Esti sigur ca vrei sa opresti tranzactia?</label>
+            </div>
+            <div class="buttonsDiv">
+                <button class="btn btn-primary" onclick="cancelForm('opresteIncarcarea')">Anuleaza</button>
+                <button class="btn btn-primary" onclick="submitStop('opresteIncarcarea', 'remote_stop_transaction')">Ok</button>
+            </div>
+        </div>
+    </div>
+    <div id="schimbaInfo" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <label for="fee_service">Taxa de serviciu:</label>
+                <input type="text" id="fee_service" name="fee_service" placeholder="Optional" required>
+            </div>
+            <div class="inputContainer">
+                <label for="prepayment_amount">Taxa preautorizare:</label>
+                <input type="text" id="prepayment_amount" name="prepayment_amount" placeholder="150" required>
+            </div>
+            <div class="inputContainer">
+                <label for="kw_price">Pret KWh:</label>
+                <input type="text" id="kw_price" name="kw_price" required>
+            </div>
+            <div class="buttonsDiv">
+                <button class="btn btn-primary" onclick="cancelForm('schimbaInfo')">Anuleaza</button>
+                <button class="btn btn-primary" onclick="submitTransfer('schimbaInfo', 'data_transfer_tariff')">Ok</button>
+            </div>
+        </div>
+    </div>
+    <div id="priceChanges" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <label for="first_price">Pretul 1(stanga-sus):</label>
+                <input type="text" id="first_price" name="first_price" required>
+            </div>
+            <div class="inputContainer">
+                <label for="second_price">Pretul 2(dreapta-sus):</label>
+                <input type="text" id="second_price" name="second_price" required>
+            </div>
+            <div class="inputContainer">
+                <label for="third_price">Pretul 3(stanga-jos):</label>
+                <input type="text" id="third_price" name="third_price" required>
+            </div>
+            <div class="inputContainer">
+                <label for="fourth_price">Pretul 4(dreapta-jos):</label>
+                <input type="text" id="fourth_price" name="fourth_price" required>
+            </div>
+            <div class="buttonsDiv">
+                <button class="btn btn-primary" onclick="closePopup('priceChanges')">Anuleaza</button>
+                <button class="btn btn-primary" onclick="submitPriceTransfer('priceChanges', 'data_transfer_prepaymentValues')">Ok</button>
+            </div>
+        </div>
+    </div>
+    </div>
+    <div id="success" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <label>Mesajul a fost transmis cu succes!</label>
+            </div>
+        </div>
+    </div>
+    <div id="error" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <label>Eroare, toate spatiile trebuie completate!</label>
+            </div>
+        </div>
+    </div>
+    <div id="changeHour" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <label for="change_type">Tipul modificarii:</label>
+                <select id="change_type">
+                    <option value="TimeOffset">Timp</option>
+                </select>
+                <label for="timeValue">Valoarea modificarii:</label>
+                <input type="text" id="timeValue" required>
+            </div>
+            <div class="buttonsDiv">
+                <button class="btn btn-primary" onclick="cancelForm('changeHour')">Anuleaza</button>
+                <button class="btn btn-primary" onclick="submitChangeConfiguration('changeHour', 'change_configuration')">Ok</button>
+            </div>
+        </div>
+    </div>
+    <div id="getDiagnostics" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <!-- <label for="location">Locatia:</label>
+                <input type="text" id="location" placeholder="http://arsek-ws.duckdns.org:8765/diagnostics"> -->
+                <label for="retries">Numar de incercari:</label>
+                <input type="text" id="retries" required>
+                <label for="retryInterval">Timpul dintre incercari:</label>
+                <input type="text" id="retryInterval" required>
+            </div>
+            <div class="buttonsDiv">
+                <button class="btn btn-primary" onclick="cancelForm('getDiagnostics')">Anuleaza</button>
+                <button class="btn btn-primary" onclick="submitGetDiagnostics('getDiagnostics', 'get_diagnostics')">Ok</button>
+            </div>
+        </div>
+    </div>
+    <div id="updateFirmware" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <label for="location2">Locatia:</label>
+                <input type="text" id="location2">
+                <label for="retrieveDate">Data updateului:</label>
+                <input type="text" id="retrieveDate" required>
+            </div>
+            <div class="buttonsDiv">
+                <button class="btn btn-primary" onclick="cancelForm('updateFirmware')">Anuleaza</button>
+                <button class="btn btn-primary" onclick="submitUpdateFirmware('updateFirmware', 'update_firmware')">Ok</button>
+            </div>
+        </div>
+    </div>
+    <div id="changeName" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <label for="stationName">Numele statiei:</label>
+                <input type="text" id="stationName">
+            </div>
+            <div class="buttonsDiv">
+                <button class="btn btn-primary" onclick="cancelForm('changeName')">Anuleaza</button>
+                <button class="btn btn-primary" onclick="submitChangeName('changeName')">Ok</button>
+            </div>
+        </div>
+    </div>
+    <div id="changeSeries" class="overlay">
+        <div class="popup">
+            <div class="inputContainer">
+                <label for="series">Seria statiei:</label>
+                <input type="text" id="series">
+            </div>
+            <div class="buttonsDiv">
+                <button class="btn btn-primary" onclick="cancelForm('changeSeries')">Anuleaza</button>
+                <button class="btn btn-primary" onclick="submitChangeSeries('changeSeries')">Ok</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tableDiv">
+        <div class="header-row">
+            <h1>Tabel tranzactii</h1>
+            <button id="refreshButton" class="btn btn-primary">Reincarca Tabel</button>
+        </div>
+        <table id="myTable" class="table">
+            <thead>
+              <tr class="left">
+                <th class="left" data-column="name">Statie</th>
+                <th class="left" data-column="kwPrice">Pret KWh(RON/KWh)</th>
+                <th class="left" data-column="loadedQuantity">Cantitate incarcata(KWh)</th>
+                <th class="left" data-column="transactionId">Id Tranzactie</th>
+                <th class="left" data-column="totalPreTax">Total fara TVA(RON)</th>
+                <th class="left" data-column="vatPercentage">TVA(%)</th>
+                <th class="left" data-column="totalWithVat">Total cu TVA(RON)</th>
+                <th class="left" data-column="hour">Data</th>
+                <!-- <th class="left">Raport</th> -->
+                <th class="left">Factura</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Define variables to track sorting order for each column
+        let sortOrders = {};
+
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchTransactionData();
+            // Add event listener to refresh button
+            document.getElementById('refreshButton').addEventListener('click', fetchTransactionData);
+
+            // Add event listeners to table headers for sorting
+            const headers = document.querySelectorAll('#myTable th');
+            headers.forEach(header => {
+                header.addEventListener('click', () => {
+                    const column = header.dataset.column;
+                    sortColumn(column);
+                });
+            });
+        });
+
+        async function fetchTransactionData() {
+            try {
+                const response = await fetch('/get_transactions');
+                const data = await response.json();
+                populateTable(data); // Populate table with fetched data
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        function populateTable(data) {
+            const tbody = document.querySelector('#myTable tbody');
+            tbody.innerHTML = ''; // Clear existing table rows
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+
+                const dateString = row.StopTime;
+                const dateObject = new Date(dateString);
+                const options = {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                };
+                const formattedDate = new Intl.DateTimeFormat('en-GB', options).format(dateObject);
+
+                tr.innerHTML = `
+                    <td class="left">${row.name}</td>
+                    <td class="left">${row.kwPrice}</td>
+                    <td class="left">${(row.finalAmount/100/row.kwPrice).toFixed(2)}</td>
+                    <td class="left">${row.TransactionID}</td>
+                    <td class="left">${(row.finalAmount/100/1.19).toFixed(2)}</td>
+                    <td class="left">19</td>
+                    <td class="left">${(row.finalAmount/100).toFixed(2)}</td>
+                    <td class="left">${formattedDate}</td>
+                    <td><button class="btn btn-secondary" onClick="submitInvoice(${row.TransactionID})">Factura</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function submitReport(transaction_id) {
+            fetch('/submit_report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ transaction_id: transaction_id })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                // Handle success
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                // Handle error
+            });
+        }
+
+        function submitInvoice(transactionId) {
+            window.location.href = `https://charge.arsek.ro/${transactionId}`;
+        }
+
+        function sortColumn(column) {
+            const tbody = document.querySelector('#myTable tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            // Determine sorting order for the column
+            if (!sortOrders[column] || sortOrders[column] === 'desc') {
+                sortOrders[column] = 'asc';
+            } else {
+                sortOrders[column] = 'desc';
+            }
+
+            const orderMultiplier = sortOrders[column] === 'asc' ? 1 : -1;
+
+            // Define sorting logic based on column index
+            let columnIndex;
+            switch (column) {
+                case 'name':
+                    columnIndex = 0;
+                    break;
+                case 'kwPrice':
+                    columnIndex = 1;
+                    break;
+                case 'loadedQuantity':
+                    columnIndex = 2;
+                    break;
+                case 'transactionId':
+                    columnIndex = 3;
+                    break;
+                case 'totalPreTax':
+                    columnIndex = 4;
+                    break;
+                case 'vatPercentage':
+                    columnIndex = 5;
+                    break;
+                case 'totalWithVat':
+                    columnIndex = 6;
+                    break;
+                case 'hour':
+                    columnIndex = 7;
+                    break;
+                default:
+                    return;
+            }
+
+            // Sort the rows based on the column data
+            rows.sort((rowA, rowB) => {
+                const cellA = rowA.querySelectorAll('td')[columnIndex].textContent.trim();
+                const cellB = rowB.querySelectorAll('td')[columnIndex].textContent.trim();
+
+                // Handle numeric sorting for applicable columns
+                if (!isNaN(cellA) && !isNaN(cellB)) {
+                    return (parseFloat(cellA) - parseFloat(cellB)) * orderMultiplier;
+                }
+
+                // Handle string sorting
+                return cellA.localeCompare(cellB) * orderMultiplier;
+            });
+
+            // Remove existing rows from the table
+            rows.forEach(row => tbody.removeChild(row));
+
+            // Re-append sorted rows to the table
+            rows.forEach(row => tbody.appendChild(row));
+        }
+    </script>
+
+    <script>
+        function openPopup(popupId) {
+            document.getElementById(popupId).style.display = "flex";
+        }
+
+        function closePopup(popupId) {
+            document.getElementById(popupId).style.display = "none";
+        }
+
+        async function submitChangeAvailability(popupId, messageType) {
+            const availability_type = document.getElementById("availability_type").value;
+            const connector_id = parseInt(document.getElementById("connector_id_status").value);
+            const serial_number = snValue;
+
+            const message = {
+                type: messageType,
+                connector_id: connector_id,
+                availability_type: availability_type,
+                queue_selector: serial_number
+            };
+
+            postMessage(message, serial_number, messageType);
+            closePopup(popupId);
+        }
+
+        async function submitReset(popupId, messageType) {
+            const reset_type = document.getElementById("reset_type").value;
+            const serial_number = snValue;
+
+            const message = {
+                type: messageType,
+                reset_type: reset_type,
+                queue_selector: serial_number
+            };
+
+            postMessage(message, serial_number, messageType);
+            closePopup(popupId);
+        }
+
+        async function submitStart(popupId, messageType) {
+            const connector_id = parseInt(document.getElementById("connector_id_start").value);
+            const serial_number = snValue;
+
+            if(connector_id) {
+                const message = {
+                    type: messageType,
+                    connector_id: connector_id,
+                    queue_selector: serial_number
+                };
+    
+                postMessage(message, serial_number, messageType);
+                closePopup(popupId);
+            } else {
+                openPopup('error');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                closePopup('error');
+            }
+        }
+
+        async function submitStop(popupId, messageType) {
+            const serial_number = snValue;
+
+            const message = {
+                type: messageType,
+                queue_selector: serial_number
+            };
+
+            postMessage(message, serial_number, messageType);
+            closePopup(popupId);
+        }
+
+        function updateKwPriceInDatabase(objectName, newKwPrice) {
+            fetch('/update_kw_price', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name: objectName, kwPrice: newKwPrice }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to update kwPrice in the database');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Successfully updated kwPrice in the database:', data);
+                location.reload();
+            })
+            .catch(error => {
+                console.error('Error updating kwPrice in the database:', error);
+            });
+        }
+
+        async function submitTransfer(popupId, messageType) {
+            const fee_service = parseFloat(document.getElementById("fee_service").value);
+            const prepayment_amount = parseFloat(document.getElementById("prepayment_amount").value);
+            const kw_price = parseFloat(document.getElementById("kw_price").value);
+            const serial_number = snValue;
+
+            if (prepayment_amount && !isNaN(prepayment_amount) && kw_price && !isNaN(kw_price)) {
+                const message = {
+                    type: messageType,
+                    fee_service: fee_service,
+                    prepayment_amount: prepayment_amount*100,
+                    kw_price: kw_price*100,
+                    queue_selector: serial_number
+                };
+                
+                postMessage(message, serial_number, messageType);
+                closePopup(popupId);
+                updateKwPriceInDatabase(str, kw_price);
+            } else {
+                openPopup('error');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                closePopup('error');
+            }
+        }
+
+        async function submitPriceTransfer(popupId, messageType) {
+            const first_price = parseInt(document.getElementById("first_price").value);
+            const second_price = parseInt(document.getElementById("second_price").value);
+            const third_price= parseInt(document.getElementById("third_price").value);
+            const fourth_price = parseInt(document.getElementById("fourth_price").value);
+            const serial_number = snValue;
+
+            if (first_price && second_price && third_price && fourth_price) {
+                const message = {
+                    type: messageType,
+                    first_price: first_price,
+                    second_price: second_price,
+                    third_price: third_price,
+                    fourth_price: fourth_price,
+                    queue_selector: serial_number
+                };
+                
+                postMessage(message, serial_number, messageType);
+                closePopup(popupId);
+            } else {
+                openPopup('error');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                closePopup('error');
+            }
+        }
+
+        async function submitChangeConfiguration(popupId, messageType) {
+            const change_type = document.getElementById("change_type").value;
+            const timeValue= document.getElementById("timeValue").value;
+            const serial_number = snValue;
+
+            if (change_type && timeValue) {
+                const message = {
+                    type: messageType,
+                    key: change_type,
+                    value: timeValue,
+                    queue_selector: serial_number
+                };
+                
+                postMessage(message, serial_number, messageType);
+                closePopup(popupId);
+            } else {
+                openPopup('error');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                closePopup('error');
+            }
+        }
+
+        async function submitGetDiagnostics(popupId, messageType) {
+            const location = "http://arsek-ws.duckdns.org:8765/diagnostics";
+            const retries= parseInt(document.getElementById("retries").value);
+            const retryInterval= parseInt(document.getElementById("retryInterval").value);
+            const serial_number = snValue;
+
+            if (change_type && timeValue) {
+                const message = {
+                    type: messageType,
+                    location: location,
+                    retries: retries,
+                    retryInterval: retryInterval,
+                    queue_selector: serial_number
+                };
+                
+                postMessage(message, serial_number, messageType);
+                closePopup(popupId);
+                // await fetch('/diagnostics', {
+                // method: 'POST',
+                // headers: {
+                //     'Content-Type': 'application/json',
+                //     },
+                //     body: JSON.stringify({
+                //         ...message,
+                //         queue_selector: serial_number
+                //     }),
+                // });
+            } else {
+                openPopup('error');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                closePopup('error');
+            }
+        }
+
+        async function submitUpdateFirmware(popupId, messageType) {
+            const location2 = document.getElementById("location2").value;
+            const retrieveDate = document.getElementById("retrieveDate").value;
+            const serial_number = snValue;
+
+            if (change_type && timeValue) {
+                const message = {
+                    type: messageType,
+                    location: location2,
+                    retrieveDate: retrieveDate,
+                    queue_selector: serial_number
+                };
+                
+                postMessage(message, serial_number, messageType);
+                closePopup(popupId);
+            } else {
+                openPopup('error');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                closePopup('error');
+            }
+        }
+
+        function submitChangeName(popupId) {
+            const stationName = document.getElementById("stationName").value;
+            const data = {
+                stationName: stationName,
+                snValue: snValue
+            };
+
+            fetch('/change_station_name', {
+                method: 'POST', // Specify the request method
+                headers: {
+                    'Content-Type': 'application/json' // Indicate that the body content is JSON
+                },
+                body: JSON.stringify(data) // Convert the data object to a JSON string
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                // Handle any further actions based on response
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                // Handle any errors
+            });
+            closePopup(popupId);
+            window.location.href = '/dashboard';
+        }
+
+        function submitChangeSeries(popupId) {
+            const series = document.getElementById("series").value;
+            const data = {
+                series: series,
+                snValue: snValue
+            };
+
+            fetch('/change_station_series', {
+                method: 'POST', // Specify the request method
+                headers: {
+                    'Content-Type': 'application/json' // Indicate that the body content is JSON
+                },
+                body: JSON.stringify(data) // Convert the data object to a JSON string
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                // Handle any further actions based on response
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                // Handle any errors
+            });
+            closePopup(popupId);
+            window.location.href = '/dashboard';
+        }
+
+        async function postMessage(message, serial_number, messageType) {
+            const response = await fetch('/send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...message,
+                    queue_selector: serial_number
+                }),
+            });
+    
+            console.log(`Sent ${messageType} message`);
+            const result = await response.json();
+            console.log(result);
+
+            if (result.success) {
+                openPopup('success');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                closePopup('success');
+            }
+            else {
+                openPopup('error');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                closePopup('error');
+            }
+        }
+
+        function cancelForm(popupId) {
+            closePopup(popupId);
+        }
+
+        async function fetchData() {
+            try {
+                const response = await fetch('/get_data');
+                const data = await response.json();
+
+                // Find the object with the matching name
+                const matchingObject = data.find(obj => obj.name === str);
+
+                if (matchingObject) {
+                    // If the object is found, get the kwPrice property
+                    const kwPrice = String(matchingObject.kwPrice);
+                    setKwPrice(kwPrice);
+                } else {
+                    console.error(`Object with name ${targetName} not found.`);
+                }
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchData);
+
+        function setKwPrice(kwPrice) {
+            var initial_kw_price = document.getElementById("initial_kw_price");
+            initial_kw_price.textContent = kwPrice + " RON/KWh";
+        }
+    </script>
+</body>
+</html>
