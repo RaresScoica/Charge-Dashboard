@@ -21,7 +21,6 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-wkhtmltopdf_path = os.getenv('WKHTMLTOPDF_PATH')
 uri = os.getenv('MONGO_URI')
 
 # MongoDB setup
