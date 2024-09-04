@@ -340,6 +340,7 @@ class ChargePoint(cp):
     @on(Action.MeterValues)
     def on_meter_values(self, connector_id, meter_value, transaction_id=None, **kwargs):
         """Meter Values are received once every minute"""
+        print(f"{self.id} received meter value")
         if 'reason' in meter_value and meter_value['reason'] == 'EVDisconnected':
             transaction_id = meter_value.get('transactionId')
             id_tag = meter_value.get('idTag')
