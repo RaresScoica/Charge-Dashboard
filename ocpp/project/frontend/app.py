@@ -443,4 +443,5 @@ def add_id_tag():
     return jsonify({"message": "ID tag added successfully"}), 201
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.getenv('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True, use_reloader=False, threaded=False)
