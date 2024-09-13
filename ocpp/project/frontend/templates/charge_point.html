@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="https://unpkg.com/@clr/ui@17.0.0/clr-ui.min.css" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solar Planners</title>
+    <title>EV Management</title>
     <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"> -->
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 </head>
@@ -14,6 +14,19 @@
     <style>
         body {
             padding: 30px 60px;
+        }
+
+        .btn.btn-primary {
+            background-color: #2c3e50;
+        }
+
+        .btn.btn-secondary {
+            color: #2c3e50;
+            border-color: #2c3e50;
+        }
+
+        .btn.btn-primary:hover {
+            background-color: #4b637a; /* Subtle background change on hover */
         }
 
         select {
@@ -157,7 +170,7 @@
         var currentUrl = window.location.href;
         var urlParts = currentUrl.split('/');
         var str = urlParts[urlParts.length - 1];
-        document.title = str;
+        document.title = "EV Management - " + str;
         document.write(`<h1 id="header">${str}</h1>`);
         var snValue = "";
         var seriesValue = "";
@@ -267,16 +280,18 @@
 
     <div class="buttons">
         <!-- <button class="btn btn-primary" onclick="openPopup('statusFunctionare')">Modifica statusul de functionare al statiei</button> -->
-        <button class="btn btn-primary" onclick="openPopup('resetare')">Reseteaza statia</button>
         <button class="btn btn-primary" onclick="openPopup('incepeIncarcarea')">Incepe incarcarea</button>
         <button class="btn btn-primary" onclick="openPopup('opresteIncarcarea')">Opreste incarcare</button>
-        <button class="btn btn-primary" onclick="openPopup('schimbaInfo')">Schimba informatiile de tarifare</button>
-        <button class="btn btn-primary" onclick="openPopup('priceChanges')">Modifica preturile de pe display</button>
-        <button class="btn btn-primary" onclick="openPopup('changeHour')">Modifica ora statiei</button>
-        <button class="btn btn-primary" onclick="openPopup('getDiagnostics')">Diagnosticheaza statia</button>
-        <button class="btn btn-primary" onclick="openPopup('updateFirmware')">Updateaza softwareul statiei</button>
-        <button class="btn btn-primary" onclick="openPopup('changeName')">Schimba numele statiei</button>
-        <button class="btn btn-primary" onclick="openPopup('changeSeries')">Schimba seria statiei</button>
+        {% if current_user.has_role('administrator') or current_user.has_role('operator') %}
+            <button class="btn btn-primary" onclick="openPopup('resetare')">Reseteaza statia</button>
+            <button class="btn btn-primary" onclick="openPopup('schimbaInfo')">Schimba informatiile de tarifare</button>
+            <button class="btn btn-primary" onclick="openPopup('priceChanges')">Modifica preturile de pe display</button>
+            <button class="btn btn-primary" onclick="openPopup('changeHour')">Modifica ora statiei</button>
+            <button class="btn btn-primary" onclick="openPopup('getDiagnostics')">Diagnosticheaza statia</button>
+            <button class="btn btn-primary" onclick="openPopup('updateFirmware')">Updateaza softwareul statiei</button>
+            <button class="btn btn-primary" onclick="openPopup('changeName')">Schimba numele statiei</button>
+            <button class="btn btn-primary" onclick="openPopup('changeSeries')">Schimba seria statiei</button>
+        {% endif %}
     </div>
 
     <div id="statusFunctionare" class="overlay">
@@ -474,12 +489,13 @@
 
     <div id="tableDiv">
         <div class="header-row">
-            <h1>Tabel tranzactii</h1>
+            <h2>Tabel tranzactii</h2>
             <button id="refreshButton" class="btn btn-primary">Reincarca Tabel</button>
         </div>
         <table id="myTable" class="table">
             <thead>
               <tr class="left">
+                <th class="left" data-column="number">Nr Crt</th>
                 <th class="left" data-column="name">Statie</th>
                 <th class="left" data-column="kwPrice">Pret KWh(RON/KWh)</th>
                 <th class="left" data-column="loadedQuantity">Cantitate incarcata(KWh)</th>
@@ -530,35 +546,40 @@
         function populateTable(data) {
             const tbody = document.querySelector('#myTable tbody');
             tbody.innerHTML = ''; // Clear existing table rows
+            var i = 1;
 
             data.forEach(row => {
-                const tr = document.createElement('tr');
-
-                const dateString = row.StopTime;
-                const dateObject = new Date(dateString);
-                const options = {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false
-                };
-                const formattedDate = new Intl.DateTimeFormat('en-GB', options).format(dateObject);
-
-                tr.innerHTML = `
-                    <td class="left">${row.name}</td>
-                    <td class="left">${row.kwPrice}</td>
-                    <td class="left">${(row.finalAmount/100/row.kwPrice).toFixed(2)}</td>
-                    <td class="left">${row.TransactionID}</td>
-                    <td class="left">${(row.finalAmount/100/1.19).toFixed(2)}</td>
-                    <td class="left">19</td>
-                    <td class="left">${(row.finalAmount/100).toFixed(2)}</td>
-                    <td class="left">${formattedDate}</td>
-                    <td><button class="btn btn-secondary" onClick="submitInvoice(${row.TransactionID})">Factura</button></td>
-                `;
-                tbody.appendChild(tr);
+                if(row.sn == snValue) {
+                    const tr = document.createElement('tr');
+    
+                    const dateString = row.StopTime;
+                    const dateObject = new Date(dateString);
+                    const options = {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    };
+                    const formattedDate = new Intl.DateTimeFormat('en-GB', options).format(dateObject);
+    
+                    tr.innerHTML = `
+                        <td class="left">${i}</td>
+                        <td class="left">${row.name}</td>
+                        <td class="left">${row.kwPrice}</td>
+                        <td class="left">${(row.finalAmount/100/row.kwPrice).toFixed(2)}</td>
+                        <td class="left">${row.TransactionID}</td>
+                        <td class="left">${(row.finalAmount/100/1.19).toFixed(2)}</td>
+                        <td class="left">19</td>
+                        <td class="left">${(row.finalAmount/100).toFixed(2)}</td>
+                        <td class="left">${formattedDate}</td>
+                        <td><button class="btn btn-secondary" onClick="submitInvoice(${row.TransactionID})">Factura</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                    i++;
+                }
             });
         }
 
@@ -585,6 +606,20 @@
             window.location.href = `https://charge.arsek.ro/${transactionId}`;
         }
 
+        function parseDate(dateStr) {
+            // Split date and time
+            const [datePart, timePart] = dateStr.split(', ');
+
+            // Split date part into day, month, year
+            const [day, month, year] = datePart.split('/').map(Number);
+
+            // Split time part into hours, minutes, seconds
+            const [hours, minutes, seconds] = timePart.split(':').map(Number);
+
+            // Create and return a new Date object
+            return new Date(year, month - 1, day, hours, minutes, seconds);
+        }
+
         function sortColumn(column) {
             const tbody = document.querySelector('#myTable tbody');
             const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -601,47 +636,64 @@
             // Define sorting logic based on column index
             let columnIndex;
             switch (column) {
-                case 'name':
+                case 'number':
                     columnIndex = 0;
                     break;
-                case 'kwPrice':
+                case 'name':
                     columnIndex = 1;
                     break;
-                case 'loadedQuantity':
+                case 'kwPrice':
                     columnIndex = 2;
                     break;
-                case 'transactionId':
+                case 'loadedQuantity':
                     columnIndex = 3;
                     break;
-                case 'totalPreTax':
+                case 'transactionId':
                     columnIndex = 4;
                     break;
-                case 'vatPercentage':
+                case 'totalPreTax':
                     columnIndex = 5;
                     break;
-                case 'totalWithVat':
+                case 'vatPercentage':
                     columnIndex = 6;
                     break;
-                case 'hour':
+                case 'totalWithVat':
                     columnIndex = 7;
+                    break;
+                case 'hour':
+                    columnIndex = 8;
+                    rows.sort((rowA, rowB) => {
+                        // Extract the date string from the table
+                        const dateA = rowA.querySelectorAll('td')[columnIndex].textContent.trim();
+                        const dateB = rowB.querySelectorAll('td')[columnIndex].textContent.trim();
+
+                        // Parse both date strings
+                        const parsedDateA = parseDate(dateA);
+                        const parsedDateB = parseDate(dateB);
+
+                        // Compare the parsed dates
+                        return (parsedDateA - parsedDateB) * orderMultiplier;
+                    });
                     break;
                 default:
                     return;
             }
 
-            // Sort the rows based on the column data
-            rows.sort((rowA, rowB) => {
-                const cellA = rowA.querySelectorAll('td')[columnIndex].textContent.trim();
-                const cellB = rowB.querySelectorAll('td')[columnIndex].textContent.trim();
+            if (column !== 'hour') {
+                // Sort the rows based on the column data
+                rows.sort((rowA, rowB) => {
+                    const cellA = rowA.querySelectorAll('td')[columnIndex].textContent.trim();
+                    const cellB = rowB.querySelectorAll('td')[columnIndex].textContent.trim();
 
-                // Handle numeric sorting for applicable columns
-                if (!isNaN(cellA) && !isNaN(cellB)) {
-                    return (parseFloat(cellA) - parseFloat(cellB)) * orderMultiplier;
-                }
+                    // Handle numeric sorting for applicable columns
+                    if (!isNaN(cellA) && !isNaN(cellB)) {
+                        return (parseFloat(cellA) - parseFloat(cellB)) * orderMultiplier;
+                    }
 
-                // Handle string sorting
-                return cellA.localeCompare(cellB) * orderMultiplier;
-            });
+                    // Handle string sorting
+                    return cellA.localeCompare(cellB) * orderMultiplier;
+                });
+            }
 
             // Remove existing rows from the table
             rows.forEach(row => tbody.removeChild(row));
@@ -649,9 +701,7 @@
             // Re-append sorted rows to the table
             rows.forEach(row => tbody.appendChild(row));
         }
-    </script>
 
-    <script>
         function openPopup(popupId) {
             document.getElementById(popupId).style.display = "flex";
         }

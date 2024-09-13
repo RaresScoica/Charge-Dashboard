@@ -42,8 +42,9 @@ except Exception as e:
 
 # Modify the User class to include the last activity timestamp
 class User(UserMixin):
-    def __init__(self, user_id, role):
+    def __init__(self, user_id, username, role):
         self.id = user_id
+        self.username = username 
         self.role = role  # List of role assigned to the user
         self.last_activity = datetime.now(utc)  # Initialize last activity time
 
@@ -65,7 +66,8 @@ def load_user(user_id):
     if not user:
         return None
     role = user.get('role', [])  # Get role from the user document, defaulting to an empty list
-    return User(str(user['_id']), role)
+    username = user.get('username')
+    return User(str(user['_id']), username, role)
 
 def role_required(required_role):
     def decorator(f):
@@ -97,16 +99,16 @@ def login():
         if user and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
             print("User authenticated successfully")
             role = user.get('role', []) 
-            user_obj = User(str(user['_id']), role)  # Pass user_id to User constructor
+            user_obj = User(str(user['_id']), user['username'], role)  # Pass user_id to User constructor
             user_obj.update_activity()  # Update user's last activity
             login_user(user_obj)
             session['last_activity'] = user_obj.last_activity  # Store last activity in session
 
             return redirect(url_for('dashboard'))
         elif user:
-            return 'Invalid password'
+            return render_template('login.html', error='invalid_password')
         else:
-            return 'User not found'
+            return render_template('login.html', error='no_user')
     return render_template('login.html')
 
 # Create a custom decorator to check session timeout
@@ -130,11 +132,10 @@ def logout():
     return redirect(url_for('login'))
 
 @app.route('/dashboard')
-@role_required('administrator')
 @check_session_timeout()
 def dashboard():
     if session:
-        return render_template('dashboard.html')
+        return render_template('dashboard.html', current_user=current_user)
     return redirect(url_for('login'))
 
 @app.route('/')
@@ -142,7 +143,6 @@ def home():
     return redirect(url_for('login'))
 
 @app.route('/chargepoint/<sn>')
-@role_required('administrator')
 @check_session_timeout()
 def sn(sn):
     return render_template('charge_point.html', sn=sn)
@@ -183,7 +183,7 @@ def accounts():
         return redirect(url_for('accounts'))
 
     users = list(collection.find())
-    return render_template('accounts.html', users=users)
+    return render_template('accounts.html', users=users, current_user=current_user)
 
 @app.route('/send_message', methods=['POST'])
 async def send_message():
@@ -224,6 +224,7 @@ def get_transactions():
         station = stations.get(transaction['sn'], {})
         combined_data.append({
             'name': station.get('name', 'Unknown'),
+            'sn': station.get('sn'),
             'kwPrice': transaction['kwPrice'],
             'finalAmount': transaction['finalAmount'],
             'TransactionID': transaction['TransactionID'],

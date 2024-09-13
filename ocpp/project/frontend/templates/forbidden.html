@@ -1,10 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="https://unpkg.com/@cds/core@6.9.2/global.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@cds/core@6.9.2/styles/theme.dark.min.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@clr/ui@17.0.0/clr-ui.min.css" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Access Denied</title>
+    <title>Acces Interzis</title>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+</head>
+<body cds-theme="light">
     <style>
+        .btn.btn-primary {
+            background-color: #2c3e50;
+        }
+
+        .btn.btn-primary:hover {
+            background-color: #4b637a; /* Subtle background change on hover */
+        }
+        
         body {
             display: flex;
             flex-direction: column;
@@ -15,29 +29,17 @@
             font-family: Arial, sans-serif;
             background-color: #f0f0f0;
         }
+
         h1 {
             font-size: 2em;
             margin-bottom: 20px;
         }
-        .btn-logout {
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 1em;
-            cursor: pointer;
-            text-decoration: none;
-        }
-        .btn-logout:hover {
-            background-color: #0056b3;
-        }
     </style>
-</head>
-<body>
+
     <h1>Nu ai rolul necesar pentru a accesa aceasta pagina!</h1>
+    
     <form action="{{ url_for('logout') }}" method="POST">
-        <button type="submit" class="btn-logout">Logout</button>
+        <button type="submit" class="btn btn-primary">Deconectare</button>
     </form>
 </body>
 </html>

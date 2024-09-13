@@ -6,14 +6,25 @@
     <link rel="stylesheet" href="https://unpkg.com/@clr/ui@17.0.0/clr-ui.min.css" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Accounts</title>
+    <title>EV Management</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 </head>
 <body cds-theme="light">
     <style>
-        button:hover {
-            opacity: 0.8;
+        body {
+            padding: 20px 40px;
+        }
+        .btn.btn-primary {
+            background-color: #2c3e50;
+        }
+
+        .btn.btn-primary:hover {
+            background-color: #4b637a; /* Subtle background change on hover */
+        }
+
+        h1 {
+            padding-bottom: 20px;
         }
 
         label {
@@ -59,11 +70,32 @@
             text-align: center;
             margin-top: 20px;
         }
+
+        .button-form-row {
+            display: flex;
+            padding-bottom: 10px;
+            justify-content: space-between; /* Pushes the button to the right side */
+            align-items: center; /* Vertically aligns items */
+            width: 100%; /* Make sure it takes up the full width of the container */
+        }
+
+        .button-form-row form {
+            margin: 0; /* Ensure no extra margin is applied */
+        }
+
+        .button-form-row button {
+            margin-left: auto; /* Optional: makes sure button is aligned properly */
+        }
     </style>
 
-    <h1>Manage Accounts</h1>
+    <h1>Conturi</h1>
 
-    <button class="btn btn-primary" onclick="openPopup('changePassword')">Add new account</button>
+    <div class="button-form-row">
+        <form action="{{ url_for('dashboard') }}">
+            <button class="btn btn-primary" type="submit">Inapoi</button>
+        </form>
+        <button class="btn btn-primary" onclick="openPopup('newAccount')">Adauga cont nou</button>
+    </div>
 
     <hr>
 
@@ -72,43 +104,95 @@
         <thead>
             <tr class="left">
                 <th class="left">Username</th>
-                <th class="left">Role</th>
-                <th class="left">Actions</th>
+                <th class="left">Rol</th>
+                <th class="left">Optiuni</th>
             </tr>
         </thead>
         <tbody>
-            {% for user in users %}
+            <!-- First row: Current User -->
+            {% for user in users if user.username == current_user.username %}
+            <tr style="background-color: #6c7e92;">
+                <td>{{ user.username }}</td>
+                <td>{{ user.role }}</td>
+                <td>
+                    <!-- Change Password Form (Always show for current user) -->
+                    <button class="btn btn-primary" onclick="openPopup('changePassword_{{ user._id }}')">Schimba parola</button>
+                    <form action="{{ url_for('accounts') }}" method="POST" id="changePassword_{{ user._id }}" class="overlay">
+                        <div class="popup">
+                            <div class="inputContainer">
+                                <input type="hidden" name="action" value="change_password">
+                                <input type="hidden" name="user_id" value="{{ user._id }}">
+                                <label>Parola:</label>
+                                <input type="password" name="new_password" required>
+                            </div>
+                            <div class="buttonsDiv">
+                                <button class="btn btn-primary" type="button" onclick="closePopup('changePassword_{{ user._id }}')">Nu</button>
+                                <button class="btn btn-primary" type="submit">Da</button>
+                            </div>
+                        </div>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        
+            <!-- Rest of the users -->
+            {% for user in users if user.username != current_user.username %}
             <tr>
                 <td>{{ user.username }}</td>
                 <td>{{ user.role }}</td>
                 <td>
-                    {% if user.username == user.id %}
-                    <!-- Edit Account Form (Hide if it's the current user) -->
-                    <form action="{{ url_for('accounts') }}" method="POST" style="display:inline-block;">
-                        <input type="hidden" name="action" value="edit">
-                        <input type="hidden" name="user_id" value="{{ user._id }}">
-                        <select name="role" required>
-                            <option value="administrator" {% if user.role == 'administrator' %}selected{% endif %}>Administrator</option>
-                            <option value="operator" {% if user.role == 'operator' %}selected{% endif %}>Operator</option>
-                            <option value="guest" {% if user.role == 'guest' %}selected{% endif %}>Guest</option>
-                        </select>
-                        <button type="submit">Edit</button>
+                    <!-- Edit, Delete, and Change Password Forms -->
+                    <button class="btn btn-primary" onclick="openPopup('changeRole_{{ user._id }}')">Schimba rolul</button>
+                    <form action="{{ url_for('accounts') }}" method="POST" id="changeRole_{{ user._id }}" class="overlay">
+                        <div class="popup">
+                            <div class="inputContainer">
+                                <input type="hidden" name="action" value="edit">
+                                <input type="hidden" name="user_id" value="{{ user._id }}">
+                                <label>Rol:</label>
+                                <div class="clr-select-wrapper">
+                                    <select class="clr-select" name="role" required>
+                                        <option value="administrator" {% if user.role == 'administrator' %}selected{% endif %}>Administrator</option>
+                                        <option value="operator" {% if user.role == 'operator' %}selected{% endif %}>Operator</option>
+                                        <option value="guest" {% if user.role == 'guest' %}selected{% endif %}>Guest</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="buttonsDiv">
+                                <button class="btn btn-primary" type="button" onclick="closePopup('changeRole_{{ user._id }}')">Anuleaza</button>
+                                <button class="btn btn-primary" type="submit">Ok</button>
+                            </div>
+                        </div>
                     </form>
-
-                    <!-- Delete Account Form (Hide if it's the current user) -->
-                    <form action="{{ url_for('accounts') }}" method="POST" style="display:inline-block;">
-                        <input type="hidden" name="action" value="delete">
-                        <input type="hidden" name="user_id" value="{{ user._id }}">
-                        <button type="submit">Delete</button>
+        
+                    <button class="btn btn-primary" onclick="openPopup('accountDelete_{{ user._id }}')">Sterge contul</button>
+                    <form action="{{ url_for('accounts') }}" method="POST" id="accountDelete_{{ user._id }}" class="overlay">
+                        <div class="popup">
+                            <div class="inputContainer">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="user_id" value="{{ user._id }}">
+                                <label>Esti sigur ca vrei sa stergi contul?</label>
+                            </div>
+                            <div class="buttonsDiv">
+                                <button class="btn btn-primary" type="button" onclick="closePopup('accountDelete_{{ user._id }}')">Nu</button>
+                                <button class="btn btn-primary" type="submit">Da</button>
+                            </div>
+                        </div>
                     </form>
-                    {% endif %}
-
-                    <!-- Change Password Form -->
-                    <form action="{{ url_for('accounts') }}" method="POST" style="display:inline-block;">
-                        <input type="hidden" name="action" value="change_password">
-                        <input type="hidden" name="user_id" value="{{ user._id }}">
-                        <input type="password" name="new_password" placeholder="New Password" required>
-                        <button type="submit">Change Password</button>
+        
+                    <button class="btn btn-primary" onclick="openPopup('changePassword_{{ user._id }}')">Schimba parola</button>
+                    <form action="{{ url_for('accounts') }}" method="POST" id="changePassword_{{ user._id }}" class="overlay">
+                        <div class="popup">
+                            <div class="inputContainer">
+                                <input type="hidden" name="action" value="change_password">
+                                <input type="hidden" name="user_id" value="{{ user._id }}">
+                                <label>Parola:</label>
+                                <input type="password" name="new_password" required>
+                            </div>
+                            <div class="buttonsDiv">
+                                <button class="btn btn-primary" type="button" onclick="closePopup('changePassword_{{ user._id }}')">Nu</button>
+                                <button class="btn btn-primary" type="submit">Da</button>
+                            </div>
+                        </div>
                     </form>
                 </td>
             </tr>
@@ -116,7 +200,7 @@
         </tbody>
     </table>
 
-    <form action="{{ url_for('accounts') }}" method="POST" id="changePassword" class="overlay">
+    <form action="{{ url_for('accounts') }}" method="POST" id="newAccount" class="overlay">
         <div class="popup">
             <div class="inputContainer">
                 <input type="hidden" name="action" value="add">
@@ -124,23 +208,25 @@
                 <input type="text" name="username" required>
             </div>
             <div class="inputContainer">
-                <label>Password:</label>
+                <label>Parola:</label>
                 <input type="password" name="password" required>
             </div>
             <div class="inputContainer">
-                <label>Role:</label>
-                <select name="role" required>
-                    <option value="administrator">Administrator</option>
-                    <option value="operator">Operator</option>
-                    <option value="guest">Guest</option>
-                </select>
+                <label>Rol:</label>
+                <div class="clr-select-wrapper">
+                    <select class="clr-select" name="role" required>
+                        <option value="administrator">Administrator</option>
+                        <option value="operator">Operator</option>
+                        <option value="guest">Guest</option>
+                    </select>
+                </div>
             </div>
             <div class="buttonsDiv">
-                <button class="btn btn-primary" onclick="closePopup('changePassword')">Anuleaza</button>
+                <button class="btn btn-primary" type="button" onclick="closePopup('newAccount')">Anuleaza</button>
                 <button class="btn btn-primary" type="submit">Ok</button>
             </div>
         </div>
-    </div>
+    </form>
     <div id="success" class="overlay">
         <div class="popup">
             <div class="inputContainer">
@@ -155,8 +241,6 @@
             </div>
         </div>
     </div>
-
-    <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
 
     <script>
         function openPopup(popupId) {

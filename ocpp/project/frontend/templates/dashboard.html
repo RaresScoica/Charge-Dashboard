@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="https://unpkg.com/@clr/ui@17.0.0/clr-ui.min.css" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solar Planners</title>
+    <title>EV Management</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 </head>
@@ -36,6 +36,19 @@
                 width: calc(50% - 20px); /* Make rectangles 50% width with margins */
                 margin: 10px;
             }
+        }
+
+        .btn.btn-primary {
+            background-color: #2c3e50;
+        }
+
+        .btn.btn-primary:hover {
+            background-color: #4b637a; /* Subtle background change on hover */
+        }
+
+        .btn.btn-secondary {
+            color: #2c3e50;
+            border-color: #2c3e50;
         }
 
         button:hover {
@@ -80,33 +93,61 @@
         .inputContainer {
             margin-bottom: 20px;
         }
-        
+
         #menu-content {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
-            width: 200px;
-            height: 100%;
-            background-color: #3498db;
-            text-align: center;
+            width: 220px;
+            height: 100vh;
+            background-color: #2c3e50; /* Darker background for a sleek look */
+            color: white;
             display: flex;
             flex-direction: column;
-            justify-content: flex-start;
+            align-items: center;
+            padding-top: 20px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* Soft shadow for depth */
+            transition: all 0.3s ease; /* Smooth transition effect */
+            overflow-y: auto; /* Enable vertical scrolling */
+        }
+
+        #menu-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #menu-content::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3); /* Styling the scrollbar */
+            border-radius: 10px;
         }
 
         #menu-content button {
-            border: 0;
-            width: 100%;
-            background-color: white;
-            height: 40px;
-            font-size: 16px;
+            width: 90%;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: transparent; /* Transparent background for cleaner design */
+            color: white;
+            font-size: 18px;
+            font-family: 'Roboto', sans-serif; /* Modern font */
+            border: none;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            border-radius: 8px; /* Rounded corners */
+            transition: background-color 0.3s ease; /* Smooth hover effect */
+        }
+
+        #menu-content button:hover {
+            background-color: #4b637a; /* Subtle background change on hover */
         }
 
         .middle-strip {
+            width: 80%;
             height: 1px;
-            background-color: black;
+            background-color: #bdc3c7;
+            margin: 20px 0;
         }
+
 
         .buttonsDiv {
             text-align: center;
@@ -114,15 +155,16 @@
         }
 
         #page-1 {
-            margin-left: 220px;
+            margin-left: 250px;
             margin-right: 20px;
+            margin-top: 20px;
         }
 
         #page-2 {
             display: none;
             margin-left: 250px;
             margin-right: 50px;
-            margin-top: 2%;
+            margin-top: 20px;
             width: 300px;
         }
 
@@ -130,21 +172,21 @@
             display: none;
             margin-left: 250px;
             margin-right: 50px;
-            margin-top: 2%;
+            margin-top: 20px;
         }
 
         #page-4 {
             display: none;
             margin-left: 250px;
             margin-right: 50px;
-            margin-top: 2%;
+            margin-top: 20px;
         }
 
         #page-5 {
             display: none;
             margin-left: 250px;
             margin-right: 50px;
-            margin-top: 2%;
+            margin-top: 20px;
         }
 
         body {
@@ -165,7 +207,7 @@
             height: 200px;
             margin: 10px;
             border-radius: 20px;
-            background-color: #3498db;
+            background-color: #2c3e50;
             text-align: center;
             line-height: 40px;
             color: #ffffff;
@@ -204,16 +246,18 @@
     <div id="menu-content">
         <button onclick="showPage('page-1')">Statii</button>
         <div class="middle-strip"></div>
-        <button onclick="showPage('page-2')">Statie noua</button>
-        <div class="middle-strip"></div>
         <button onclick="showPage('page-3')">Tranzactii</button>
         <div class="middle-strip"></div>
-        <button onclick="showPage('page-5')">Harta</button>
-        <div class="middle-strip"></div>
-        <button onclick="showPage('page-4')">Setari</button>
-        <div class="middle-strip"></div>
-        <button onclick="settings()">Conturi</button>
-        <div class="middle-strip"></div>
+        <!-- <button onclick="showPage('page-5')">Harta</button>
+        <div class="middle-strip"></div> -->
+        {% if current_user.has_role('administrator') or current_user.has_role('operator') %}
+            <button onclick="showPage('page-4')">Setari</button>
+            <div class="middle-strip"></div>
+        {% endif %}
+        {% if current_user.has_role('administrator') %}
+            <button onclick="accounts()">Conturi</button>
+            <div class="middle-strip"></div>
+        {% endif %}
         <form action="{{ url_for('logout') }}" method="post">
             <button type="submit">Iesi din cont</button>
         </form>
@@ -223,23 +267,12 @@
         <div id="rectangle-list"></div>
     </div>
 
-    <div id="page-2">
-        <label for="newItemName">Numele statiei: </label>
-        <input type="text" id="newItemName">
-        <label for="newItemSN">Serial Number-ul statiei: </label>
-        <input type="text" id="newItemSN">
-        <label for="newKwPrice">Pret KWh: </label>
-        <input type="text" id="newKwPrice">
-        <label for="newSeries">Seria statiei: </label>
-        <input type="text" id="newSeries">
-        <button class="btn btn-primary" onclick="addNewItem()">Adauga o statie</button>
-    </div>
-
     <div id="page-3">
         <button id="refreshButton" class="btn btn-primary">Reincarca Tabel</button>
         <table id="myTable" class="table">
             <thead>
               <tr class="left">
+                <th class="left" data-column="number">Nr Crt</th>
                 <th class="left" data-column="name">Statie</th>
                 <th class="left" data-column="kwPrice">Pret KWh(RON/KWh)</th>
                 <th class="left" data-column="loadedQuantity">Cantitate incarcata(KWh)</th>
@@ -268,8 +301,33 @@
 
     <div id="page-4">
         <div class="buttons">
+            <button class="btn btn-primary" onclick="openPopup('newStation')">Adauga o statie</button>
             <button class="btn btn-primary" onclick="openPopup('priceChanges')">Modifica preturile la toate statiile</button>
             <button class="btn btn-primary" onclick="openPopup('idTag')">Adauga IDtag interzis</button>
+        </div>
+        <div id="newStation" class="overlay">
+            <div class="popup">
+                <div class="inputContainer">
+                    <label for="newItemName">Numele statiei: </label>
+                    <input type="text" id="newItemName" required>
+                </div>
+                <div class="inputContainer">
+                    <label for="newItemSN">Serial Number-ul statiei: </label>
+                    <input type="text" id="newItemSN"required>
+                </div>
+                <div class="inputContainer">
+                    <label for="newKwPrice">Pret KWh: </label>
+                    <input type="text" id="newKwPrice" required>
+                </div>
+                <div class="inputContainer">
+                    <label for="newSeries">Seria statiei: </label>
+                    <input type="text" id="newSeries" required>
+                </div>
+                <div class="buttonsDiv">
+                    <button class="btn btn-primary" onclick="closePopup('newStation')">Anuleaza</button>
+                    <button class="btn btn-primary" onclick="addNewItem()">Ok</button>
+                </div>
+            </div>
         </div>
         <div id="priceChanges" class="overlay">
             <div class="popup">
@@ -326,7 +384,7 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <!-- Add your JavaScript file -->
     <script>
-        function settings() {
+        function accounts() {
             window.location.href='/accounts';
         }
 
@@ -383,6 +441,7 @@
         function populateTable(data) {
             const tbody = document.querySelector('#myTable tbody');
             tbody.innerHTML = ''; // Clear existing table rows
+            var i = 1;
 
             data.forEach(row => {
                 const tr = document.createElement('tr');
@@ -401,6 +460,7 @@
                 const formattedDate = new Intl.DateTimeFormat('en-GB', options).format(dateObject);
 
                 tr.innerHTML = `
+                    <td class="left">${i}</td>
                     <td class="left">${row.name}</td>
                     <td class="left">${row.kwPrice}</td>
                     <td class="left">${(row.finalAmount/100/row.kwPrice).toFixed(2)}</td>
@@ -412,6 +472,7 @@
                     <td><button class="btn btn-secondary" onClick="submitInvoice(${row.TransactionID})">Factura</button></td>
                 `;
                 tbody.appendChild(tr);
+                i++;
             });
         }
 
@@ -440,6 +501,20 @@
 
         let sortOrders = {};
 
+        function parseDate(dateStr) {
+            // Split date and time
+            const [datePart, timePart] = dateStr.split(', ');
+
+            // Split date part into day, month, year
+            const [day, month, year] = datePart.split('/').map(Number);
+
+            // Split time part into hours, minutes, seconds
+            const [hours, minutes, seconds] = timePart.split(':').map(Number);
+
+            // Create and return a new Date object
+            return new Date(year, month - 1, day, hours, minutes, seconds);
+        }
+
         function sortColumn(column) {
             const tbody = document.querySelector('#myTable tbody');
             const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -456,34 +531,44 @@
             // Define sorting logic based on column index
             let columnIndex;
             switch (column) {
-                case 'name':
+                case 'number':
                     columnIndex = 0;
                     break;
-                case 'kwPrice':
+                case 'name':
                     columnIndex = 1;
                     break;
-                case 'loadedQuantity':
+                case 'kwPrice':
                     columnIndex = 2;
                     break;
-                case 'transactionId':
+                case 'loadedQuantity':
                     columnIndex = 3;
                     break;
-                case 'totalPreTax':
+                case 'transactionId':
                     columnIndex = 4;
                     break;
-                case 'vatPercentage':
+                case 'totalPreTax':
                     columnIndex = 5;
                     break;
-                case 'totalWithVat':
+                case 'vatPercentage':
                     columnIndex = 6;
                     break;
-                case 'hour':
+                case 'totalWithVat':
                     columnIndex = 7;
+                    break;
+                case 'hour':
+                    columnIndex = 8;
                     // For the 'hour' column, handle sorting based on date objects
                     rows.sort((rowA, rowB) => {
-                        const dateA = new Date(rowA.querySelectorAll('td')[columnIndex].textContent.trim());
-                        const dateB = new Date(rowB.querySelectorAll('td')[columnIndex].textContent.trim());
-                        return (dateA - dateB) * orderMultiplier;
+                        // Extract the date string from the table
+                        const dateA = rowA.querySelectorAll('td')[columnIndex].textContent.trim();
+                        const dateB = rowB.querySelectorAll('td')[columnIndex].textContent.trim();
+
+                        // Parse both date strings
+                        const parsedDateA = parseDate(dateA);
+                        const parsedDateB = parseDate(dateB);
+
+                        // Compare the parsed dates
+                        return (parsedDateA - parsedDateB) * orderMultiplier;
                     });
                     break;
                 default:
