@@ -51,10 +51,6 @@
             border-color: #2c3e50;
         }
 
-        button:hover {
-            opacity: 0.8;
-        }
-
         label {
             display: inline-block;
             text-align: center;
@@ -248,19 +244,26 @@
 
         .header-row {
             display: flex;
-            justify-content: space-between; /* Space elements equally */
+            flex-wrap: wrap; /* Allows wrapping to the next line */
+            justify-content: flex-start; /* Align elements to the start */
             align-items: center; /* Aligns items vertically in the center */
             margin-bottom: 10px;
-            gap: 50px; /* Add some space between items */
+            gap: 30px; /* Add space between elements */
         }
 
-        .header-row button {
-            margin-top: 30px;
-            margin-left: auto; /* Ensures the button is pushed to the far right */
+        .header-row h2 {
+            margin: 0; /* Remove default margin */
         }
 
         .header-row label {
-            margin-top: 30px;
+            margin-left: 20px; /* Add some space to the left of the label */
+        }
+
+        .header-row button {
+            flex-shrink: 0; /* Prevent the button from shrinking */
+            width: auto; /* Let the button width be determined by its content */
+            padding: 10px 20px; /* Adjust padding for better appearance */
+            margin-left: auto; /* Push the button to the far right */
         }
     </style>
 
