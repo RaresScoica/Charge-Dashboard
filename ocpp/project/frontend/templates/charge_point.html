@@ -126,14 +126,22 @@
 
         .header-row {
             display: flex;
-            justify-content: space-between; /* This will place the h1 and button on opposite sides */
+            flex-wrap: wrap; /* Allows wrapping to the next line */
+            justify-content: flex-start; /* Align elements to the start */
             align-items: center; /* Aligns items vertically in the center */
-            margin-bottom: 10px; /* Adds space between the header and the table */
+            margin-bottom: 10px;
+            gap: 30px; /* Add space between elements */
+        }
+
+        .header-row h2 {
+            margin: 0; /* Remove default margin */
         }
 
         .header-row button {
-            margin-top: 30px;
-            margin-left: auto; /* Ensures the button is pushed to the far right */
+            flex-shrink: 0; /* Prevent the button from shrinking */
+            width: auto; /* Let the button width be determined by its content */
+            padding: 10px 20px; /* Adjust padding for better appearance */
+            margin-left: auto; /* Push the button to the far right */
         }
 
         #myTable th {
