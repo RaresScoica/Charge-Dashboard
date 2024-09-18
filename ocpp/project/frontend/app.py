@@ -148,11 +148,13 @@ def sn(sn):
     return render_template('charge_point.html', sn=sn)
 
 @app.route('/accounts', methods=['GET', 'POST'])
-@role_required('administrator')
 @check_session_timeout()
 def accounts():
     db = client['Accounts']
-    collection = db['Credentials']
+    collectionCredentials = db['Credentials']
+
+    dbEV = client['EV_Stations']
+    collectionLogs = dbEV['logs']
 
     if request.method == 'POST':
         action = request.form.get('action')
@@ -161,28 +163,61 @@ def accounts():
             password = request.form['password']
             role = request.form['role']
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-            collection.insert_one({
+            collectionCredentials.insert_one({
                 "username": username,
                 "password": hashed_password.decode('utf-8'),
                 "role": role
             })
+            collectionLogs.insert_one({
+                "username": current_user.username,
+                "timeStamp": datetime.now(),
+                "change": 'New account named: ' + username
+            })
         elif action == 'edit':
             user_id = request.form['user_id']
+            username = request.form['username']
             role = request.form['role']
-            collection.update_one({"_id": ObjectId(user_id)}, {"$set": {"role": role}})
+            collectionCredentials.update_one({"_id": ObjectId(user_id)}, {"$set": {"role": role}})
+            collectionLogs.insert_one({
+                "username": current_user.username,
+                "timeStamp": datetime.now(),
+                "change": 'Changed role for: ' + username + ' to: ' + role
+            })
         elif action == 'delete':
             user_id = request.form['user_id']
-            collection.delete_one({"_id": ObjectId(user_id)})
+            username = request.form['username']
+            collectionCredentials.delete_one({"_id": ObjectId(user_id)})
+            collectionLogs.insert_one({
+                "username": current_user.username,
+                "timeStamp": datetime.now(),
+                "change": 'Account deleted: ' + username
+            })
         elif action == 'change_password':
             user_id = request.form['user_id']
+            username = request.form['username']
             new_password = request.form['new_password']
             hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
-            collection.update_one({"_id": ObjectId(user_id)}, {"$set": {"password": hashed_password.decode('utf-8')}})
+            collectionCredentials.update_one({"_id": ObjectId(user_id)}, {"$set": {"password": hashed_password.decode('utf-8')}})
+            collectionLogs.insert_one({
+                "username": current_user.username,
+                "timeStamp": datetime.now(),
+                "change": 'Changed password for account named: ' + username
+            })
+        elif action == 'change_username':
+            user_id = request.form['user_id']
+            username = request.form['username']
+            new_username = request.form['new_username']
+            collectionCredentials.update_one({"_id": ObjectId(user_id)}, {"$set": {"username": new_username}})
+            collectionLogs.insert_one({
+                "username": current_user.username,
+                "timeStamp": datetime.now(),
+                "change": 'Changed username for account named: ' + username + ' to: ' + new_username
+            })
 
         # Redirect to the GET route after handling the POST request
         return redirect(url_for('accounts'))
 
-    users = list(collection.find())
+    users = list(collectionCredentials.find())
     return render_template('accounts.html', users=users, current_user=current_user)
 
 @app.route('/send_message', methods=['POST'])
@@ -190,6 +225,7 @@ async def send_message():
     data = request.get_json()
     message_body = json.dumps(data)
     queue_selector = data.get('queue_selector', '1')
+    change = data.get('change')
 
     connection = await aio_pika.connect_robust("amqp://guest:guest@localhost/")
     channel = await connection.channel()
@@ -204,6 +240,15 @@ async def send_message():
         )
 
     await connection.close()
+
+    dbEV = client['EV_Stations']
+    collectionLogs = dbEV['logs']
+
+    collectionLogs.insert_one({
+        "username": current_user.username,
+        "timeStamp": datetime.now(),
+        "change": change
+    })
 
     return jsonify({'success': True})
 
@@ -335,6 +380,15 @@ def add_item():
         }
         result = collection.insert_one(new_item)
 
+        dbEV = client['EV_Stations']
+        collectionLogs = dbEV['logs']
+
+        collectionLogs.insert_one({
+            "username": current_user.username,
+            "timeStamp": datetime.now(),
+            "change": 'New station added named: ' + new_item_name + ' with SN: ' + new_item_sn
+        })
+
         return jsonify({"message": "Item added successfully", "inserted_id": str(result.inserted_id)}), 201
     except Exception as e:
         print(f"Error adding item: {e}")
@@ -399,6 +453,15 @@ def change_station_name():
         {'$set': {'name': station_name}}
     )
 
+    dbEV = client['EV_Stations']
+    collectionLogs = dbEV['logs']
+
+    collectionLogs.insert_one({
+        "username": current_user.username,
+        "timeStamp": datetime.now(),
+        "change": 'Changed name of station: ' + sn_value + ' with name: ' + station_name
+    })
+
     if result.matched_count > 0:
         return jsonify({"success": True, "message": "Station name updated successfully"})
     else:
@@ -422,6 +485,15 @@ def change_station_series():
         {'$set': {'series': series}}
     )
 
+    dbEV = client['EV_Stations']
+    collectionLogs = dbEV['logs']
+
+    collectionLogs.insert_one({
+        "username": current_user.username,
+        "timeStamp": datetime.now(),
+        "change": 'Changed series of station: ' + sn_value + ' with series: ' + series
+    })
+
     if result.matched_count > 0:
         return jsonify({"success": True, "message": "Station name updated successfully"})
     else:
@@ -440,6 +512,15 @@ def add_id_tag():
     
     # Insert the idTag into the banned collection as a new document
     banned_collection.insert_one({"Idtag": id_tag})
+
+    dbEV = client['EV_Stations']
+    collectionLogs = dbEV['logs']
+
+    collectionLogs.insert_one({
+        "username": current_user.username,
+        "timeStamp": datetime.now(),
+        "change": 'Banned ID tag: ' + id_tag
+    })
     
     return jsonify({"message": "ID tag added successfully"}), 201
 

@@ -241,6 +241,27 @@
             text-align: center;
             min-width: 280px;
         }
+
+        label {
+            font-weight: bold;
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between; /* Space elements equally */
+            align-items: center; /* Aligns items vertically in the center */
+            margin-bottom: 10px;
+            gap: 50px; /* Add some space between items */
+        }
+
+        .header-row button {
+            margin-top: 30px;
+            margin-left: auto; /* Ensures the button is pushed to the far right */
+        }
+
+        .header-row label {
+            margin-top: 30px;
+        }
     </style>
 
     <div id="menu-content">
@@ -254,10 +275,8 @@
             <button onclick="showPage('page-4')">Setari</button>
             <div class="middle-strip"></div>
         {% endif %}
-        {% if current_user.has_role('administrator') %}
-            <button onclick="accounts()">Conturi</button>
-            <div class="middle-strip"></div>
-        {% endif %}
+        <button onclick="accounts()">Cont</button>
+        <div class="middle-strip"></div>
         <form action="{{ url_for('logout') }}" method="post">
             <button type="submit">Iesi din cont</button>
         </form>
@@ -268,7 +287,11 @@
     </div>
 
     <div id="page-3">
-        <button id="refreshButton" class="btn btn-primary">Reincarca Tabel</button>
+        <div class="header-row">
+            <h2>Tabel tranzactii</h2>
+            <label id="castigTotal">0</label>
+            <button id="refreshButton" class="btn btn-primary">Reincarca Tabel</button>
+        </div>
         <table id="myTable" class="table">
             <thead>
               <tr class="left">
@@ -442,6 +465,7 @@
             const tbody = document.querySelector('#myTable tbody');
             tbody.innerHTML = ''; // Clear existing table rows
             var i = 1;
+            var j = 0;
 
             data.forEach(row => {
                 const tr = document.createElement('tr');
@@ -473,6 +497,8 @@
                 `;
                 tbody.appendChild(tr);
                 i++;
+                j = j + row.finalAmount/100;
+                document.getElementById("castigTotal").innerText = 'Castiguri totale: ' + j.toFixed(2) + ' RON';
             });
         }
 
@@ -697,6 +723,7 @@
                 },
                 body: JSON.stringify({
                     ...message,
+                    change: messageType,
                     queue_selector: serial_number
                 }),
             });

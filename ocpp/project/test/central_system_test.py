@@ -87,8 +87,13 @@ class ChargePoint(cp):
     
     @on(Action.StartTransaction)
     def on_start_transaction(self, connector_id, id_tag, meter_start, timestamp):
-        transaction_id = random.randint(100000, 999999)
         db = mongoClient['EV_Stations']
+        collectionCurrent = db['current_transaction']
+        current_doc = collectionCurrent.find_one({'ID': 'current'})
+        transaction_id = current_doc.get('currentId')
+        increment = transaction_id + 1
+        collectionCurrent.update_one({'ID': 'current'}, {'$set': {'currentId': increment}})
+
         collection = db['stations']
         collection.update_one({'sn': self.id}, {'$set': {'transactionId': transaction_id}})
 
