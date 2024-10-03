@@ -265,6 +265,15 @@
             padding: 10px 20px; /* Adjust padding for better appearance */
             margin-left: auto; /* Push the button to the far right */
         }
+
+        .flex-container {
+            display: flex;
+            align-items: center; /* Aligns both the label and checkbox vertically */
+        }
+
+        .flex-container label {
+            white-space: nowrap; /* Prevents the label from wrapping onto a new line */
+        }
     </style>
 
     <div id="menu-content">
@@ -330,6 +339,7 @@
             <button class="btn btn-primary" onclick="openPopup('newStation')">Adauga o statie</button>
             <button class="btn btn-primary" onclick="openPopup('priceChanges')">Modifica preturile la toate statiile</button>
             <button class="btn btn-primary" onclick="openPopup('idTag')">Adauga IDtag interzis</button>
+            <button class="btn btn-primary" onclick="openPopup('alerts')">Alerte statii</button>
         </div>
         <div id="newStation" class="overlay">
             <div class="popup">
@@ -388,6 +398,17 @@
                 <div class="buttonsDiv">
                     <button class="btn btn-primary" onclick="closePopup('idTag')">Anuleaza</button>
                     <button class="btn btn-primary" onclick="submitIdTag('idTag')">Ok</button>
+                </div>
+            </div>
+        </div>
+        <div id="alerts" class="overlay">
+            <div class="popup">
+                <div class="flex-container">
+                    <label for="alert">Alerta defectiune statii: </label>
+                    <input type="checkbox" id="alert" name="alert" value="true" onchange="updateAlertStatus()">
+                </div>
+                    <div class="buttonsDiv">
+                    <button class="btn btn-primary" onclick="submitAlerts('alerts')">Ok</button>
                 </div>
             </div>
         </div>
@@ -716,6 +737,33 @@
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 closePopup('error');
             }
+        }
+
+        async function submitAlerts(popupId) {
+            closePopup('alerts');
+        }
+
+        function updateAlertStatus() {
+            // Get the checkbox value
+            const alertChecked = document.getElementById('alert').checked;
+
+            // Send the updated alert status to the server
+            fetch('/update-alert', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    alert: alertChecked
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Alert status updated:', data);
+            })
+            .catch(error => {
+                console.error('Error updating alert status:', error);
+            });
         }
 
         async function postMessage(message, serial_number, messageType) {

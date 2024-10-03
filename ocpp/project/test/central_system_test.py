@@ -4,9 +4,11 @@ import logging
 import os
 import random
 import string
+import requests
 import websockets
 import certifi
 
+from dotenv import load_dotenv
 from aio_pika import connect
 from datetime import datetime, timedelta, timezone
 from ocpp.routing import on
@@ -345,7 +347,7 @@ class ChargePoint(cp):
     @on(Action.MeterValues)
     def on_meter_values(self, connector_id, meter_value, transaction_id=None, **kwargs):
         """Meter Values are received once every minute"""
-        print(f"{self.id} received meter value")
+        print(f"{self.id}: Received meter values: {meter_value}")
         if 'reason' in meter_value and meter_value['reason'] == 'EVDisconnected':
             transaction_id = meter_value.get('transactionId')
             id_tag = meter_value.get('idTag')
@@ -543,6 +545,7 @@ class ChargePoint(cp):
         db = mongoClient['EV_Stations']
         collectionTransactions = db['transactions']
         collectionStations = db['stations']
+        collectionRemote = db['remote']
 
         station = collectionStations.find_one({'sn': data['sn']})
         k = station['increment']
@@ -551,9 +554,14 @@ class ChargePoint(cp):
         collectionStations.update_one({'sn': data['sn']}, {'$set': {'increment': k}})
 
         try:
-            collectionTransactions.insert_one(data)
-            logging.info("Transaction details stored in MongoDB")
-            print("Transaction details stored in MongoDB")
+            if data['finalAmount'] == 0:
+                collectionRemote.insert_one(data)
+                logging.info("Transaction details stored in remote")
+                print("Transaction details stored in remote")
+            else:
+                collectionTransactions.insert_one(data)
+                logging.info("Transaction details stored in transactions")
+                print("Transaction details stored in transactions")
         except Exception as e:
             logging.error(f"Error storing transaction details in MongoDB: {e}")
 
@@ -611,6 +619,18 @@ async def on_connect(websocket, path):
             logging.error(f"Error updating status in DB: {e}")
         logging.info("Charge Point %s disconnected.", charge_point_id)
         print(f"{charge_point_id} disconnected")
+
+        current_time_utc = datetime.now(timezone.utc)
+
+        # Convert UTC time to GMT+2
+        gmt_plus_2 = current_time_utc + timedelta(hours=3)
+
+        station = collection.find_one({'sn': charge_point_id})
+
+        to_number = "+40773357791"
+        message_body = f"Statia {station.get('name')} a avut un defect tehnic la ora: {gmt_plus_2}!", 
+        send_api_sms(to_number, message_body)
+
         connection = await connect("amqp://guest:guest@localhost/")
         channel = await connection.channel()
         await channel.queue_delete(queue_name)
@@ -721,6 +741,38 @@ async def receive_messages_from_rabbitmq(queue_name, charge_point, charge_point_
             print(f"Error decoding JSON: {e}")
 
     await connection.close()
+
+load_dotenv()
+
+SMSAPI_TOKEN = os.getenv('SMSAPI_TOKEN')
+
+def send_api_sms(to_number, message_body):
+    url = "https://api.smsapi.com/sms.do"
+    headers = {
+        'Authorization': f'Bearer {SMSAPI_TOKEN}'  # Use the Bearer token for authentication
+    }
+    data = {
+        'to': to_number,                 # The recipient phone number in international format
+        'message': message_body,         # The content of the message
+        'from': 'Arsek',        # Optional: Sender name (if configured in your SMSAPI account)
+    }
+
+    try:
+        response = requests.post(url, headers=headers, data=data)
+        response.raise_for_status()  # Raises an HTTPError for bad responses (4xx or 5xx)
+
+        # Print the raw response content to inspect what is being returned
+        print(f"Raw response: {response.text}")
+
+        # Check if the response is in JSON format
+        try:
+            response_data = response.json()
+            print(f"Message sent successfully! Response: {response_data}")
+        except ValueError:
+            print("Received a non-JSON response. Check the response format.")
+
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
 
 async def main():
     server = await websockets.serve(

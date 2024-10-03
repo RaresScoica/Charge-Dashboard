@@ -12,7 +12,6 @@ from dotenv import load_dotenv
 from pytz import utc
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, redirect, render_template, request, send_file, session, url_for
-from pymongo import UpdateOne
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
@@ -23,8 +22,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 uri = os.getenv('MONGO_URI')
 
-# MongoDB setup
-client = MongoClient(uri)
+SMSAPI_TOKEN = os.getenv('SMSAPI_TOKEN')
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -161,12 +159,17 @@ def accounts():
         if action == 'add':
             username = request.form['username']
             password = request.form['password']
+            email = request.form['email']
+            phone = request.form['phone']
             role = request.form['role']
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
             collectionCredentials.insert_one({
                 "username": username,
                 "password": hashed_password.decode('utf-8'),
-                "role": role
+                "email": email,
+                "phone": phone,
+                "role": role,
+                "alert": False
             })
             collectionLogs.insert_one({
                 "username": current_user.username,
@@ -202,6 +205,26 @@ def accounts():
                 "username": current_user.username,
                 "timeStamp": datetime.now(),
                 "change": 'Changed password for account named: ' + username
+            })
+        elif action == 'change_email':
+            user_id = request.form['user_id']
+            username = request.form['username']
+            email = request.form['email']
+            collectionCredentials.update_one({"_id": ObjectId(user_id)}, {"$set": {"email": email}})
+            collectionLogs.insert_one({
+                "username": current_user.username,
+                "timeStamp": datetime.now(),
+                "change": 'Changed email for account named: ' + username
+            })
+        elif action == 'change_phone':
+            user_id = request.form['user_id']
+            username = request.form['username']
+            phone = request.form['phone']
+            collectionCredentials.update_one({"_id": ObjectId(user_id)}, {"$set": {"phone": phone}})
+            collectionLogs.insert_one({
+                "username": current_user.username,
+                "timeStamp": datetime.now(),
+                "change": 'Changed phone for account named: ' + username
             })
         elif action == 'change_username':
             user_id = request.form['user_id']
@@ -523,6 +546,28 @@ def add_id_tag():
     })
     
     return jsonify({"message": "ID tag added successfully"}), 201
+
+@app.route('/update-alert', methods=['POST'])
+def update_alert():
+    db = client['Accounts']
+    credentials = db['Credentials']
+
+    data = request.get_json()
+    alert_status = data['alert']
+    
+    username = current_user.username
+
+    # Update the 'alert' field in the user's document
+    result = credentials.update_one(
+        {'username': username},
+        {'$set': {'alert': alert_status}}
+    )
+    
+    if result.modified_count > 0:
+        return jsonify({"success": True, "message": "Alert status updated successfully"}), 200
+    else:
+        return jsonify({"success": False, "message": "Failed to update alert status"}), 400
+
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))

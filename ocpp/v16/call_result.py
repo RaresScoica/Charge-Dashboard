@@ -27,23 +27,6 @@ from ocpp.v16.enums import (
     UpdateStatus,
 )
 
-# Most types of CALLRESULT messages can originate from only 1 source, either
-# from a Charge Point or Central System, but not from both.
-#
-# Take for example the CALLRESULT for an Authorize action. This type of
-# CALLRESULT can only be send from a Central System to Charging Station, not
-# the other way around.
-#
-# For some types of CALLRESULT messages the opposite is true; for example for
-# the CALLRESULT message for a Reset action. This can only come from a Charge
-# Point to a Central System.
-#
-# The only CALLRESULT that can originate from both a Central System and a
-# Charge Point is the CALLRESULT message for a DataTransfer.
-
-# The now following section of classes are for CALLRESULT messages that flow
-# from Central System to Charge Point.
-
 
 @dataclass
 class AuthorizePayload:
