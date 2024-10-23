@@ -496,6 +496,7 @@
 
                 const dateString = row.StopTime;
                 const dateObject = new Date(dateString);
+                dateObject.setHours(dateObject.getHours() + 7);
                 const options = {
                     day: '2-digit',
                     month: '2-digit',

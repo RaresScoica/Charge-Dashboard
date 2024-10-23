@@ -628,7 +628,8 @@ async def on_connect(websocket, path):
         station = collection.find_one({'sn': charge_point_id})
 
         to_number = "+40773357791"
-        message_body = f"Statia {station.get('name')} a avut un defect tehnic la ora: {gmt_plus_2}!"
+        my_time = gmt_plus_2.strftime("%d/%m/%Y, %H:%M")
+        message_body = f"Statia {station.get('name')} a avut un defect tehnic la ora: {my_time}!"
         send_api_sms(to_number, message_body)
 
         connection = await connect("amqp://arsek:arsekpass@arsek-ws.duckdns.org:5672")
@@ -749,12 +750,12 @@ SMSAPI_TOKEN = os.getenv('SMSAPI_TOKEN')
 def send_api_sms(to_number, message_body):
     url = "https://api.smsapi.com/sms.do"
     headers = {
-        'Authorization': f'Bearer {SMSAPI_TOKEN}'  # Use the Bearer token for authentication
+        'Authorization': 'Bearer b6THLcUBZvNPsyAJ0EnGaFb6iDdOJEe7llFXbgcc'  # Use the Bearer token for authentication
     }
     data = {
         'to': to_number,                 # The recipient phone number in international format
         'message': message_body,         # The content of the message
-        'from': 'Arsek',        # Optional: Sender name (if configured in your SMSAPI account)
+        'from': 'Arsek'        # Optional: Sender name (if configured in your SMSAPI account)
     }
 
     try:
