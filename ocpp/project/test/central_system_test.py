@@ -631,7 +631,7 @@ async def on_connect(websocket, path):
         message_body = f"Statia {station.get('name')} a avut un defect tehnic la ora: {gmt_plus_2}!"
         send_api_sms(to_number, message_body)
 
-        connection = await connect("amqp://guest:guest@arsek-ws.duckdns.org:5672")
+        connection = await connect("amqp://arsek:arsekpass@arsek-ws.duckdns.org:5672")
         channel = await connection.channel()
         await channel.queue_delete(queue_name)
         await connection.close()
@@ -649,7 +649,7 @@ async def handle_firmware_request(websocket, path):
         await websocket.send("Invalid path")
 
 async def receive_messages_from_rabbitmq(queue_name, charge_point, charge_point_id):
-    connection = await connect("amqp://guest:guest@arsek-ws.duckdns.org:5672")
+    connection = await connect("amqp://arsek:arsekpass@arsek-ws.duckdns.org:5672")
     channel = await connection.channel()
     queue = await channel.declare_queue(queue_name)
     async for message in queue:

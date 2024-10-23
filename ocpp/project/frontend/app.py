@@ -250,7 +250,7 @@ async def send_message():
     queue_selector = data.get('queue_selector', '1')
     change = data.get('change')
 
-    connection = await aio_pika.connect_robust("amqp://guest:guest@arsek-ws.duckdns.org:5672")
+    connection = await aio_pika.connect_robust("amqp://arsek:arsekpass@arsek-ws.duckdns.org:5672")
     channel = await connection.channel()
 
     queues = [f"charge_point_queue_{queue}" for queue in queue_selector.split(',')]
